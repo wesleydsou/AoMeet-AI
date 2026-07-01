@@ -1,5 +1,4 @@
 import { PutObjectCommand, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const B2_PREFIX = "b2:";
 
@@ -62,27 +61,6 @@ export async function uploadToB2(objectKey: string, buffer: Buffer, contentType?
   );
 
   return toB2StorageKey(objectKey);
-}
-
-export async function createPresignedUploadUrl(objectKey: string, contentType: string) {
-  const config = getB2Config();
-  if (!config) {
-    throw new Error("Backblaze B2 nao configurado.");
-  }
-
-  const client = createB2Client(config);
-  const command = new PutObjectCommand({
-    Bucket: config.bucket,
-    Key: objectKey,
-    ContentType: contentType || "application/octet-stream",
-  });
-
-  const uploadUrl = await getSignedUrl(client, command, { expiresIn: 600 });
-
-  return {
-    uploadUrl,
-    storageKey: toB2StorageKey(objectKey),
-  };
 }
 
 export async function downloadFromB2(storageKey: string) {

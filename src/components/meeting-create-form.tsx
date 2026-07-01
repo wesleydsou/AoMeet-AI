@@ -12,51 +12,35 @@ const uploadFields: Array<{ kind: UploadKind; field: string; label: string }> = 
   { kind: "transcript", field: "transcriptFile", label: "transcricao" },
 ];
 
-async function uploadFileDirectly(file: File, kind: UploadKind) {
-  const prep = await fetch("/api/meetings/upload-url", {
+async function uploadFileViaServer(file: File, kind: UploadKind) {
+  const body = new FormData();
+  body.set("kind", kind);
+  body.set("file", file);
+
+  const response = await fetch("/api/meetings/upload", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      kind,
-      fileName: file.name,
-      fileSize: file.size,
-      contentType: file.type || "application/octet-stream",
-    }),
+    body,
   });
 
-  const payload = (await prep.json()) as {
-    useDirect?: boolean;
-    uploadUrl?: string;
+  const payload = (await response.json()) as {
     storageKey?: string;
+    originalName?: string;
+    size?: number;
     error?: string;
   };
 
-  if (!prep.ok) {
-    throw new Error(payload.error || `Falha ao preparar upload de ${kind}.`);
+  if (!response.ok) {
+    throw new Error(payload.error || `Falha ao enviar ${kind}.`);
   }
 
-  if (payload.useDirect) {
-    return null;
-  }
-
-  if (!payload.uploadUrl || !payload.storageKey) {
-    throw new Error(`Resposta invalida ao preparar upload de ${kind}.`);
-  }
-
-  const put = await fetch(payload.uploadUrl, {
-    method: "PUT",
-    body: file,
-    headers: { "Content-Type": file.type || "application/octet-stream" },
-  });
-
-  if (!put.ok) {
-    throw new Error(`Falha ao enviar ${kind} para o storage (${put.status}).`);
+  if (!payload.storageKey || !payload.originalName || !payload.size) {
+    throw new Error(`Resposta invalida ao enviar ${kind}.`);
   }
 
   return {
     storageKey: payload.storageKey,
-    originalName: file.name,
-    size: file.size,
+    originalName: payload.originalName,
+    size: payload.size,
   };
 }
 
@@ -93,14 +77,12 @@ export function MeetingCreateForm({
           }
 
           setUploadStatus(`Enviando ${label} (${Math.round(file.size / (1024 * 1024))} MB)...`);
-          const uploaded = await uploadFileDirectly(file, kind);
+          const uploaded = await uploadFileViaServer(file, kind);
 
-          if (uploaded) {
-            formData.delete(field);
-            formData.set(`${kind}StorageKey`, uploaded.storageKey);
-            formData.set(`${kind}OriginalName`, uploaded.originalName);
-            formData.set(`${kind}Size`, String(uploaded.size));
-          }
+          formData.delete(field);
+          formData.set(`${kind}StorageKey`, uploaded.storageKey);
+          formData.set(`${kind}OriginalName`, uploaded.originalName);
+          formData.set(`${kind}Size`, String(uploaded.size));
         }
 
         setUploadStatus("Salvando reuniao...");
