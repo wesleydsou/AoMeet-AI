@@ -51,7 +51,13 @@ AoMeet AI e o MVP da Aosafe Cloud Solutions para registrar reunioes, consolidar 
 ## Fluxo de upload
 1. O usuario cria a reuniao em `/meetings/new`.
 2. Audio, video e `.txt` sao gravados no Backblaze B2 ou storage local.
-3. Apenas chaves/URLs privadas ficam no banco — download via rota autenticada.
+3. Apos a transcricao, os arquivos sao **removidos automaticamente** do bucket para economizar espaco.
+4. A transcricao permanece no banco; download de midia so existe enquanto o arquivo ainda nao foi processado.
+
+## Producao
+- **App:** https://aomeet-ai.vercel.app
+- **GitHub:** https://github.com/wesleydsou/AoMeet-AI
+- **Vercel:** projeto `grupo-aosafe/aomeet-ai`
 
 ## Fluxo de processamento
 1. O usuario cria a reuniao e pode iniciar o processamento no mesmo submit.
