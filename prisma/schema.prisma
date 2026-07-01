@@ -1,0 +1,218 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum Plan {
+  FREE
+  PRO
+  BUSINESS
+  PREMIUM
+}
+
+enum MeetingSourceType {
+  upload
+  transcript_import
+  manual
+  chrome_extension
+  google_meet
+}
+
+enum MeetingStatus {
+  draft
+  queued
+  uploaded
+  transcribing
+  summarizing
+  completed
+  failed
+  archived
+}
+
+enum TaskStatus {
+  pending
+  in_progress
+  completed
+}
+
+enum SharePermission {
+  view
+  comment
+  edit
+}
+
+enum AIRequestType {
+  summary
+  tasks
+  decisions
+  chat
+  transcript_cleanup
+}
+
+model User {
+  id                String         @id @default(cuid())
+  name              String
+  email             String         @unique
+  passwordHash      String
+  role              Role           @default(USER)
+  plan              Plan           @default(FREE)
+  defaultLanguage   String         @default("pt-BR")
+  fileRetentionDays    Int            @default(30)
+  extensionTokenHash   String         @unique
+  createdAt            DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  clients           Client[]
+  meetings          Meeting[]
+  usageRecords      MonthlyUsage[]
+  aiRequests        AIRequest[]
+}
+
+model Client {
+  id          String    @id @default(cuid())
+  userId      String
+  name        String
+  companyName String
+  email       String
+  phone       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meetings    Meeting[]
+}
+
+model Meeting {
+  id                    String                     @id @default(cuid())
+  userId                String
+  clientId              String?
+  title                 String
+  meetingDate           DateTime
+  platform              String
+  durationSeconds       Int                        @default(0)
+  participantCount      Int                        @default(0)
+  participantsText      String?
+  sourceType            MeetingSourceType          @default(manual)
+  status                MeetingStatus              @default(draft)
+  language              String                     @default("pt-BR")
+  meetingUrl            String?
+  consentConfirmed            Boolean                    @default(false)
+  audioStorageKey             String?
+  videoStorageKey             String?
+  transcriptImportStorageKey  String?
+  audioOriginalName           String?
+  videoOriginalName           String?
+  transcriptOriginalName      String?
+  processingError             String?
+  transcriptText              String?
+  summaryText           String?
+  decisionsText         String?
+  tasksText             String?
+  risksText             String?
+  nextStepsText         String?
+  followUpText          String?
+  aiChatContext         String?
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+  user                  User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client                Client?                    @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  participants          MeetingParticipant[]
+  transcriptSegments    MeetingTranscriptSegment[]
+  tasks                 MeetingTask[]
+  shares                MeetingShare[]
+  processingLogs        ProcessingLog[]
+  aiRequests            AIRequest[]
+}
+
+model MeetingParticipant {
+  id        String   @id @default(cuid())
+  meetingId String
+  name      String
+  email     String?
+  role      String?
+  joinedAt  DateTime?
+  leftAt    DateTime?
+  createdAt DateTime @default(now())
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+}
+
+model MeetingTranscriptSegment {
+  id               String   @id @default(cuid())
+  meetingId        String
+  speakerName      String
+  startTimeSeconds Int
+  endTimeSeconds   Int
+  text             String
+  createdAt        DateTime @default(now())
+  meeting          Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+}
+
+model MeetingTask {
+  id              String     @id @default(cuid())
+  meetingId       String
+  title           String
+  description     String?
+  responsibleName String?
+  dueDate         DateTime?
+  status          TaskStatus @default(pending)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  meeting         Meeting    @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+}
+
+model MeetingShare {
+  id              String          @id @default(cuid())
+  meetingId       String
+  sharedWithEmail String
+  permission      SharePermission @default(view)
+  createdAt       DateTime        @default(now())
+  meeting         Meeting         @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, sharedWithEmail])
+}
+
+model ProcessingLog {
+  id           String   @id @default(cuid())
+  meetingId    String
+  step         String
+  status       String
+  message      String
+  metadataJson String?
+  createdAt    DateTime @default(now())
+  meeting      Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+}
+
+model AIRequest {
+  id          String        @id @default(cuid())
+  userId      String
+  meetingId   String?
+  type        AIRequestType
+  prompt      String
+  response    String
+  creditsUsed Int           @default(1)
+  createdAt   DateTime      @default(now())
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meeting     Meeting?      @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+}
+
+model MonthlyUsage {
+  id            String   @id @default(cuid())
+  userId        String
+  month         String
+  meetingsUsed  Int      @default(0)
+  aiCreditsUsed Int      @default(0)
+  storageUsed   Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month])
+}
