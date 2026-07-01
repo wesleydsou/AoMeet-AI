@@ -53,7 +53,7 @@ export default async function ReportsPage({
         action={<Link href={`/api/reports/export${query ? `?${query}` : ""}`} className="btn-primary">Exportar CSV</Link>}
       />
 
-      <section className="glass-card rounded-[32px] p-6">
+      <section className="glass-card p-6">
         <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
           <input className="form-input" name="search" defaultValue={params.search} placeholder="Pesquisar titulo" />
           <input className="form-input" name="participants" defaultValue={params.participants} placeholder="Numero de participantes" />
@@ -81,7 +81,7 @@ export default async function ReportsPage({
         </form>
       </section>
 
-      <section className="glass-card mt-6 overflow-hidden rounded-[32px] p-2">
+      <section className="glass-card mt-6 overflow-hidden p-2">
         {meetings.length ? (
           <table className="data-table">
             <thead>
@@ -101,14 +101,14 @@ export default async function ReportsPage({
                   <td>{formatDate(meeting.meetingDate)}</td>
                   <td>
                     <p className="font-semibold">{meeting.title}</p>
-                    <p className="text-sm text-[var(--muted)]">{meeting.participantsText || "Participantes nao detalhados"}</p>
+                    <p className="text-sm text-muted-foreground">{meeting.participantsText || "Participantes nao detalhados"}</p>
                   </td>
                   <td>{formatDuration(meeting.durationSeconds)}</td>
                   <td>{meeting.participantCount}</td>
                   <td>{meeting.platform}</td>
                   <td><StatusBadge status={meeting.status} /></td>
                   <td>
-                    <Link href={`/meetings/${meeting.id}`} className="font-bold text-[var(--primary)]">
+                    <Link href={`/meetings/${meeting.id}`} className="font-bold text-primary">
                       Visualizar
                     </Link>
                   </td>

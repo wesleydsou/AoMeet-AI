@@ -5,6 +5,8 @@ export const planLimits = {
   PREMIUM: { meetings: 9999, aiCredits: 9999, storageBytes: 20 * 1024 * 1024 * 1024, uploadLabel: "Uso customizado e integracoes" },
 } as const;
 
+export const adminSidebarItem = { href: "/admin", label: "Administracao", icon: "shield" } as const;
+
 export const sidebarItems = [
   { href: "/dashboard", label: "Dashboard", icon: "layout-dashboard" },
   { href: "/meetings", label: "Minhas reunioes", icon: "folder-kanban" },

@@ -23,7 +23,6 @@ export async function authenticateExtensionRequest(request: Request) {
       email: true,
       role: true,
       plan: true,
-      defaultLanguage: true,
       fileRetentionDays: true,
       name: true,
       createdAt: true,

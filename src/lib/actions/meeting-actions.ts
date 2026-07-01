@@ -13,7 +13,7 @@ import { updateTaskSchema } from "@/lib/validations/extension";
 
 export async function createMeetingAction(formData: FormData) {
   const user = await requireUser();
-  const limitCheck = await canCreateMeeting(user.id, user.plan);
+  const limitCheck = await canCreateMeeting(user);
 
   if (!limitCheck.allowed) {
     redirect("/meetings/new?error=Seu plano atingiu o limite mensal de reunioes.");
@@ -66,7 +66,7 @@ export async function createMeetingAction(formData: FormData) {
   }
 
   const totalUploadBytes = (audioFile?.size || 0) + (videoFile?.size || 0) + (transcriptFile?.size || 0);
-  const storageCheck = await canUseStorage(user.id, user.plan, totalUploadBytes);
+  const storageCheck = await canUseStorage(user, totalUploadBytes);
 
   if (!storageCheck.allowed) {
     redirect("/meetings/new?error=Seu plano atingiu o limite de armazenamento.");
@@ -125,7 +125,7 @@ export async function createMeetingAction(formData: FormData) {
 export async function reprocessMeetingAction(formData: FormData) {
   const user = await requireUser();
   const meetingId = String(formData.get("meetingId"));
-  const limitCheck = await canUseAi(user.id, user.plan, 3);
+  const limitCheck = await canUseAi(user, 3);
 
   if (!limitCheck.allowed) {
     redirect(`/meetings/${meetingId}?error=Seu plano nao possui creditos suficientes para reprocessar.`);
@@ -146,7 +146,7 @@ export async function reprocessMeetingAction(formData: FormData) {
 export async function askAiAction(formData: FormData) {
   const user = await requireUser();
   const meetingId = String(formData.get("meetingId"));
-  const limitCheck = await canUseAi(user.id, user.plan, 1);
+  const limitCheck = await canUseAi(user, 1);
 
   if (!limitCheck.allowed) {
     redirect(`/meetings/${meetingId}?tab=chat&error=Seu plano atingiu o limite de creditos de IA.`);

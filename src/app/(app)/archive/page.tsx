@@ -30,11 +30,11 @@ export default async function ArchivePage({
       {meetings.length ? (
         <div className="grid gap-4">
           {meetings.map((meeting) => (
-            <Link key={meeting.id} href={`/meetings/${meeting.id}`} className="glass-card rounded-[32px] p-6">
+            <Link key={meeting.id} href={`/meetings/${meeting.id}`} className="glass-card p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-lg font-black">{meeting.title}</p>
-                  <p className="mt-2 text-sm text-[var(--muted)]">{formatDate(meeting.meetingDate)} • {meeting.platform}</p>
+                  <p className="text-lg font-semibold">{meeting.title}</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{formatDate(meeting.meetingDate)} • {meeting.platform}</p>
                 </div>
                 <StatusBadge status={meeting.status} />
               </div>

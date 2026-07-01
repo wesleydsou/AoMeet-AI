@@ -39,7 +39,7 @@ export function DashboardStats({
                 <Icon className="size-4 text-primary/70" />
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-semibold tabular-nums tracking-tight">{String(value).padStart(2, "0")}</p>
+                <p className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">{String(value).padStart(2, "0")}</p>
               </CardContent>
             </Card>
           </StaggerItem>

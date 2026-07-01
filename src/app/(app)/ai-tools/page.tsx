@@ -23,11 +23,11 @@ export default function AIToolsPage() {
         {tools.map((tool, index) => (
           <div
             key={tool}
-            className="glass-card rounded-[32px] p-6"
+            className="glass-card p-6"
             style={{ animationDelay: `${index * 70}ms` }}
           >
-            <p className="text-lg font-black">{tool}</p>
-            <p className="mt-3 text-sm text-[var(--muted)]">
+            <p className="text-lg font-semibold">{tool}</p>
+            <p className="mt-3 text-sm text-muted-foreground">
               Pronto para acionar o provider mockado agora e conectar OpenAI, Groq, Whisper ou AssemblyAI em uma proxima fase.
             </p>
           </div>

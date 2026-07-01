@@ -1,7 +1,11 @@
 import { Plan } from "@prisma/client";
+import { hasUnlimitedAccess } from "@/lib/admin";
 import { planLimits } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
 import { monthKey } from "@/lib/utils";
+import type { Role } from "@prisma/client";
+
+type UserLimitsContext = { id: string; plan: Plan; role: Role; email: string };
 
 export async function getOrCreateUsage(userId: string) {
   const month = monthKey();
@@ -50,9 +54,13 @@ export async function decrementUsage(userId: string, input: { storageBytes?: num
   });
 }
 
-export async function canCreateMeeting(userId: string, plan: Plan) {
-  const usage = await getOrCreateUsage(userId);
-  const limits = getPlanLimits(plan);
+export async function canCreateMeeting(user: UserLimitsContext) {
+  if (hasUnlimitedAccess(user)) {
+    return { allowed: true, usage: await getOrCreateUsage(user.id), limits: getPlanLimits(user.plan) };
+  }
+
+  const usage = await getOrCreateUsage(user.id);
+  const limits = getPlanLimits(user.plan);
 
   return {
     allowed: usage.meetingsUsed < limits.meetings,
@@ -61,9 +69,13 @@ export async function canCreateMeeting(userId: string, plan: Plan) {
   };
 }
 
-export async function canUseAi(userId: string, plan: Plan, credits = 1) {
-  const usage = await getOrCreateUsage(userId);
-  const limits = getPlanLimits(plan);
+export async function canUseAi(user: UserLimitsContext, credits = 1) {
+  if (hasUnlimitedAccess(user)) {
+    return { allowed: true, usage: await getOrCreateUsage(user.id), limits: getPlanLimits(user.plan) };
+  }
+
+  const usage = await getOrCreateUsage(user.id);
+  const limits = getPlanLimits(user.plan);
 
   return {
     allowed: usage.aiCreditsUsed + credits <= limits.aiCredits,
@@ -72,9 +84,13 @@ export async function canUseAi(userId: string, plan: Plan, credits = 1) {
   };
 }
 
-export async function canUseStorage(userId: string, plan: Plan, bytes: number) {
-  const usage = await getOrCreateUsage(userId);
-  const limits = getPlanLimits(plan);
+export async function canUseStorage(user: UserLimitsContext, bytes: number) {
+  if (hasUnlimitedAccess(user)) {
+    return { allowed: true, usage: await getOrCreateUsage(user.id), limits: getPlanLimits(user.plan) };
+  }
+
+  const usage = await getOrCreateUsage(user.id);
+  const limits = getPlanLimits(user.plan);
 
   return {
     allowed: usage.storageUsed + bytes <= limits.storageBytes,

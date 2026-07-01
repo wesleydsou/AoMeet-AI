@@ -20,7 +20,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Meeting not found." }, { status: 404 });
   }
 
-  const limitCheck = await canUseAi(user.id, user.plan, 3);
+  const limitCheck = await canUseAi(user, 3);
   if (!limitCheck.allowed) {
     return NextResponse.json({ error: "AI credit limit reached." }, { status: 402 });
   }

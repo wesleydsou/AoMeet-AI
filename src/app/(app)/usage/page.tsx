@@ -23,11 +23,11 @@ export default async function UsagePage() {
 
       <div className="grid gap-4 md:grid-cols-3">
         {cards.map((card) => (
-          <div key={card.label} className="glass-card rounded-[32px] p-6">
-            <p className="text-sm text-[var(--muted)]">{card.label}</p>
-            <p className="mt-4 text-4xl font-black">
+          <div key={card.label} className="glass-card p-6">
+            <p className="text-sm text-muted-foreground">{card.label}</p>
+            <p className="mt-4 text-4xl font-semibold text-foreground tabular-nums">
               {card.used}
-              {card.limit ? <span className="text-base font-semibold text-[var(--muted)]"> / {card.limit === 9999 ? "Ilimitado" : card.limit}</span> : null}
+              {card.limit ? <span className="text-base font-semibold text-muted-foreground"> / {card.limit === 9999 ? "Ilimitado" : card.limit}</span> : null}
             </p>
           </div>
         ))}

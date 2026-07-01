@@ -11,7 +11,10 @@ export default async function ProtectedLayout({
   const pathname = (await headers()).get("x-current-path") || "/dashboard";
 
   return (
-    <AppShell pathname={pathname} user={{ id: user.id, name: user.name, email: user.email, plan: user.plan }}>
+    <AppShell
+      pathname={pathname}
+      user={{ id: user.id, name: user.name, email: user.email, plan: user.plan, role: user.role }}
+    >
       {children}
     </AppShell>
   );

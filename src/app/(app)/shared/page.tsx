@@ -21,9 +21,9 @@ export default async function SharedPage() {
       {shares.length ? (
         <div className="grid gap-4">
           {shares.map((share) => (
-            <div key={share.id} className="glass-card rounded-[32px] p-6">
-              <p className="text-lg font-black">{share.meeting.title}</p>
-              <p className="mt-2 text-sm text-[var(--muted)]">Permissao: {share.permission}</p>
+            <div key={share.id} className="glass-card p-6">
+              <p className="text-lg font-semibold">{share.meeting.title}</p>
+              <p className="mt-2 text-sm text-muted-foreground">Permissao: {share.permission}</p>
             </div>
           ))}
         </div>

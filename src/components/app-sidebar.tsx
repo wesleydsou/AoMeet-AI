@@ -13,11 +13,12 @@ import {
   Menu,
   Settings,
   Share2,
+  Shield,
   Users,
   type LucideIcon,
 } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth-actions";
-import { sidebarItems } from "@/lib/constants";
+import { adminSidebarItem, sidebarItems } from "@/lib/constants";
 import { Logo } from "@/components/logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,10 @@ import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
-const sidebarIconMap: Record<(typeof sidebarItems)[number]["icon"], LucideIcon> = {
+const sidebarIconMap: Record<
+  (typeof sidebarItems)[number]["icon"] | typeof adminSidebarItem.icon,
+  LucideIcon
+> = {
   "layout-dashboard": LayoutDashboard,
   "folder-kanban": FolderKanban,
   "chart-column": ChartColumnBig,
@@ -36,19 +40,31 @@ const sidebarIconMap: Record<(typeof sidebarItems)[number]["icon"], LucideIcon> 
   settings: Settings,
   gauge: Gauge,
   users: Users,
+  shield: Shield,
 };
 
 type SidebarProps = {
   pathname: string;
+  isAdmin?: boolean;
   user: { name: string; email: string; plan: string };
   usage: { meetingsUsed: number; aiCreditsUsed: number };
   limits: { meetings: number; aiCredits: number };
 };
 
-function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+function NavLinks({
+  pathname,
+  isAdmin,
+  onNavigate,
+}: {
+  pathname: string;
+  isAdmin?: boolean;
+  onNavigate?: () => void;
+}) {
+  const items = isAdmin ? [adminSidebarItem, ...sidebarItems] : sidebarItems;
+
   return (
     <nav className="space-y-1">
-      {sidebarItems.map(({ href, label, icon }) => {
+      {items.map(({ href, label, icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
         const Icon = sidebarIconMap[icon];
 
@@ -142,9 +158,9 @@ function UserCard({ user }: Pick<SidebarProps, "user">) {
 
 export function DesktopSidebar(props: SidebarProps) {
   return (
-    <aside className="hidden w-64 shrink-0 flex-col gap-6 lg:flex">
+    <aside className="hidden w-60 shrink-0 flex-col gap-5 border-r border-sidebar-border bg-sidebar px-4 py-6 lg:sticky lg:top-0 lg:flex lg:h-screen lg:overflow-y-auto">
       <Logo />
-      <NavLinks pathname={props.pathname} />
+      <NavLinks pathname={props.pathname} isAdmin={props.isAdmin} />
       <UsageCard usage={props.usage} limits={props.limits} />
       <div className="mt-auto">
         <UserCard user={props.user} />
@@ -169,7 +185,7 @@ export function MobileNav(props: SidebarProps) {
             <Logo />
           </SheetHeader>
           <div className="flex flex-col gap-6 p-4">
-            <NavLinks pathname={props.pathname} />
+            <NavLinks pathname={props.pathname} isAdmin={props.isAdmin} />
             <Separator />
             <UsageCard usage={props.usage} limits={props.limits} />
             <UserCard user={props.user} />

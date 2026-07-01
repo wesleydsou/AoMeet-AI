@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const limitCheck = await canCreateMeeting(user.id, user.plan);
+  const limitCheck = await canCreateMeeting(user);
   if (!limitCheck.allowed) {
     return NextResponse.json({ error: "Monthly meeting limit reached." }, { status: 402 });
   }

@@ -27,8 +27,8 @@ export default async function ClientsPage({
       <MessageBanner message={params.success} tone="success" />
 
       <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
-        <form action={createClientAction} className="glass-card rounded-[32px] p-6">
-          <p className="text-lg font-black">Novo cliente</p>
+        <form action={createClientAction} className="glass-card p-6">
+          <p className="panel-title">Novo cliente</p>
           <div className="mt-4 space-y-3">
             <input className="form-input" name="name" placeholder="Nome do contato" />
             <input className="form-input" name="companyName" placeholder="Empresa" />
@@ -40,19 +40,19 @@ export default async function ClientsPage({
           </button>
         </form>
 
-        <section className="glass-card rounded-[32px] p-6">
-          <p className="text-lg font-black">Clientes cadastrados</p>
+        <section className="glass-card p-6">
+          <p className="panel-title">Clientes cadastrados</p>
           <div className="mt-5 space-y-4">
             {clients.length ? (
               clients.map((client) => (
-                <div key={client.id} className="rounded-[24px] border border-[var(--border)] bg-white/80 p-4">
-                  <p className="font-bold">{client.companyName}</p>
-                  <p className="mt-1 text-sm text-[var(--muted)]">{client.name}</p>
-                  <p className="mt-1 text-sm text-[var(--muted)]">{client.email}</p>
+                <div key={client.id} className="rounded-lg border border-border bg-muted/50 p-4">
+                  <p className="font-semibold text-foreground">{client.companyName}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{client.name}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{client.email}</p>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-[var(--muted)]">Nenhum cliente cadastrado ainda.</p>
+              <p className="text-sm text-muted-foreground">Nenhum cliente cadastrado ainda.</p>
             )}
           </div>
         </section>

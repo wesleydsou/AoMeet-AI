@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { isAdminUser } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import { assertStrongSecret } from "@/lib/security";
 import { generateExtensionToken, hashExtensionToken } from "@/lib/extension-token";
@@ -97,6 +98,15 @@ export async function requireUser() {
   const user = await getCurrentUser();
   if (!user) {
     redirect("/login");
+  }
+
+  return user;
+}
+
+export async function requireAdmin() {
+  const user = await requireUser();
+  if (!isAdminUser(user)) {
+    redirect("/dashboard?error=Acesso restrito a administradores.");
   }
 
   return user;

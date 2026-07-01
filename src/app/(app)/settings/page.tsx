@@ -23,7 +23,7 @@ export default async function SettingsPage({
       <MessageBanner message={params.success} tone="success" />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_0.8fr]">
-        <form action={updateSettingsAction} className="glass-card rounded-[32px] p-6">
+        <form action={updateSettingsAction} className="glass-card p-6">
           <div className="grid gap-4 md:grid-cols-2">
             <input className="form-input" name="name" defaultValue={user.name} placeholder="Nome" />
             <input className="form-input" value={user.plan} readOnly aria-readonly="true" />
@@ -41,15 +41,15 @@ export default async function SettingsPage({
           </button>
         </form>
 
-        <div className="glass-card rounded-[32px] p-6">
-          <p className="text-lg font-black">Token da extensao</p>
-          <p className="mt-2 text-sm text-[var(--muted)]">
+        <div className="glass-card p-6">
+          <p className="panel-title">Token da extensao</p>
+          <p className="mt-2 text-sm text-muted-foreground">
             Este token autentica a extensao Chrome no backend. Guarde-o em local seguro — ele nao fica armazenado em texto puro no banco.
           </p>
           {params.extensionToken ? (
-            <pre className="mt-4 overflow-x-auto rounded-[24px] bg-[#0f1d2a] p-4 font-mono text-sm text-cyan-100">{params.extensionToken}</pre>
+            <pre className="code-block mt-4">{params.extensionToken}</pre>
           ) : (
-            <p className="mt-4 rounded-[24px] bg-white/80 p-4 text-sm text-[var(--muted)]">
+            <p className="mt-4 rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
               Token configurado. Gere um novo token para copiar e usar na extensao Chrome.
             </p>
           )}
@@ -58,7 +58,7 @@ export default async function SettingsPage({
               Gerar novo token
             </button>
           </form>
-          <p className="mt-4 text-sm text-[var(--muted)]">
+          <p className="mt-4 text-sm text-muted-foreground">
             Arquivos ficam no Backblaze B2 (producao) ou storage local (desenvolvimento). Chaves de API de IA e transcricao permanecem apenas no servidor.
           </p>
         </div>

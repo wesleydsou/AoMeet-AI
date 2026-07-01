@@ -18,7 +18,7 @@ export function SectionHeader({
           <p className="text-xs font-medium uppercase tracking-widest text-primary">{eyebrow}</p>
         ) : null}
         <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">{title}</h1>
-        <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{description}</p>
+        <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{description}</p>
       </div>
       {action ? <div className="flex flex-wrap gap-2">{action}</div> : null}
     </FadeIn>

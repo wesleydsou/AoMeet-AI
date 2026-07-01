@@ -61,7 +61,7 @@ export default async function MeetingsPage({
       <MessageBanner message={params.error} tone="error" />
       <MessageBanner message={params.success} tone="success" />
 
-      <section className="glass-card rounded-[32px] p-6">
+      <section className="glass-card p-6">
         <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <input className="form-input" name="search" defaultValue={params.search} placeholder="Buscar por palavra-chave" />
           <select className="form-select" name="status" defaultValue={params.status || "all"}>
@@ -94,7 +94,7 @@ export default async function MeetingsPage({
         </form>
       </section>
 
-      <section className="glass-card mt-6 overflow-hidden rounded-[32px] p-2">
+      <section className="glass-card mt-6 overflow-hidden p-2">
         {meetings.length ? (
           <table className="data-table">
             <thead>
@@ -113,7 +113,7 @@ export default async function MeetingsPage({
                 <tr key={meeting.id}>
                   <td>
                     <p className="font-semibold">{meeting.title}</p>
-                    <p className="text-sm text-[var(--muted)]">{meeting.client?.companyName || "Sem cliente"}</p>
+                    <p className="text-sm text-muted-foreground">{meeting.client?.companyName || "Sem cliente"}</p>
                   </td>
                   <td>{formatDate(meeting.meetingDate)}</td>
                   <td>{meeting.platform}</td>
@@ -123,7 +123,7 @@ export default async function MeetingsPage({
                     <StatusBadge status={meeting.status} />
                   </td>
                   <td>
-                    <Link href={`/meetings/${meeting.id}`} className="font-bold text-[var(--primary)]">
+                    <Link href={`/meetings/${meeting.id}`} className="font-bold text-primary">
                       Visualizar
                     </Link>
                   </td>

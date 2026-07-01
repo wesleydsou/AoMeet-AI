@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ensureMasterPrivileges } from "@/lib/admin";
 import { createSession, hashPassword } from "@/lib/auth";
 import { generateExtensionToken, hashExtensionToken } from "@/lib/extension-token";
 import { prisma } from "@/lib/prisma";
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
 
   const extensionToken = generateExtensionToken();
 
-  const user = await prisma.user.create({
+  let user = await prisma.user.create({
     data: {
       name: parsed.data.name,
       email: parsed.data.email.toLowerCase(),
@@ -30,6 +31,11 @@ export async function POST(request: Request) {
       extensionTokenHash: hashExtensionToken(extensionToken),
     },
   });
+
+  const promoted = await ensureMasterPrivileges(user.id, user.email);
+  if (promoted) {
+    user = promoted;
+  }
 
   await createSession({
     sub: user.id,
