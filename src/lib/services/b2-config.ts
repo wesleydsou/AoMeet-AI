@@ -40,6 +40,10 @@ export function formatB2Error(error: unknown) {
   const code =
     typeof error === "object" && error && "name" in error ? String((error as { name?: string }).name) : "";
 
+  if (/minimum allowed size/i.test(message)) {
+    return "Parte do upload abaixo do minimo do Backblaze B2 (5 MB). Tente novamente — o app foi ajustado para evitar esse fluxo.";
+  }
+
   if (/Malformed Access Key Id|InvalidAccessKeyId/i.test(message) || code === "InvalidAccessKeyId") {
     return [
       "Credenciais Backblaze B2 invalidas para a API S3.",

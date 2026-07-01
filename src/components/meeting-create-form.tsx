@@ -70,18 +70,13 @@ async function uploadFileViaServer(file: File, kind: UploadKind): Promise<Upload
   };
 }
 
-async function uploadFileViaMultipart(
-  file: File,
-  kind: UploadKind,
-  onProgress?: (message: string) => void,
-): Promise<UploadResult> {
+async function uploadFileViaBunnyDirect(file: File, kind: UploadKind): Promise<UploadResult> {
   const contentType = file.type || "application/octet-stream";
 
-  const initResponse = await fetch("/api/meetings/upload/multipart", {
+  const prep = await fetch("/api/meetings/upload-url", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      phase: "init",
       kind,
       fileName: file.name,
       fileSize: file.size,
@@ -89,79 +84,48 @@ async function uploadFileViaMultipart(
     }),
   });
 
-  const initPayload = await readApiPayload<{
-    uploadId?: string;
-    objectKey?: string;
+  const payload = await readApiPayload<{
+    useDirect?: boolean;
+    uploadUrl?: string;
+    accessKey?: string;
     storageKey?: string;
-    chunkSize?: number;
+    contentType?: string;
     error?: string;
-  }>(initResponse);
+  }>(prep);
 
-  if (!initResponse.ok || !initPayload.uploadId || !initPayload.objectKey || !initPayload.chunkSize) {
-    throw new Error(initPayload.error || `Falha ao iniciar upload de ${kind}.`);
+  if (!prep.ok) {
+    throw new Error(payload.error || `Falha ao preparar upload de ${kind}.`);
   }
 
-  const chunkSize = initPayload.chunkSize;
-  const totalParts = Math.ceil(file.size / chunkSize);
-  const parts: Array<{ partNumber: number; etag: string }> = [];
-
-  for (let partNumber = 1; partNumber <= totalParts; partNumber += 1) {
-    const start = (partNumber - 1) * chunkSize;
-    const end = Math.min(start + chunkSize, file.size);
-    const chunk = file.slice(start, end);
-
-    onProgress?.(`Enviando parte ${partNumber}/${totalParts}...`);
-
-    const partBody = new FormData();
-    partBody.set("uploadId", initPayload.uploadId);
-    partBody.set("objectKey", initPayload.objectKey);
-    partBody.set("partNumber", String(partNumber));
-    partBody.set("chunk", chunk, `${file.name}.part${partNumber}`);
-
-    const partResponse = await fetch("/api/meetings/upload/multipart", {
-      method: "POST",
-      body: partBody,
-    });
-
-    const partPayload = await readApiPayload<{ partNumber?: number; etag?: string; error?: string }>(partResponse);
-
-    if (!partResponse.ok || !partPayload.partNumber || !partPayload.etag) {
-      throw new Error(partPayload.error || `Falha ao enviar parte ${partNumber} de ${kind}.`);
-    }
-
-    parts.push({ partNumber: partPayload.partNumber, etag: partPayload.etag });
+  if (payload.useDirect) {
+    return uploadFileViaServer(file, kind);
   }
 
-  onProgress?.("Finalizando upload...");
+  if (!payload.uploadUrl || !payload.storageKey || !payload.accessKey) {
+    throw new Error(`Resposta invalida ao preparar upload de ${kind}.`);
+  }
 
-  const completeResponse = await fetch("/api/meetings/upload/multipart", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      phase: "complete",
-      uploadId: initPayload.uploadId,
-      objectKey: initPayload.objectKey,
-      originalName: file.name,
-      fileSize: file.size,
-      parts,
-    }),
+  const signedContentType = payload.contentType || contentType;
+  const put = await fetch(payload.uploadUrl, {
+    method: "PUT",
+    body: file,
+    headers: {
+      AccessKey: payload.accessKey,
+      "Content-Type": signedContentType,
+    },
   });
 
-  const completePayload = await readApiPayload<{
-    storageKey?: string;
-    originalName?: string;
-    size?: number;
-    error?: string;
-  }>(completeResponse);
-
-  if (!completeResponse.ok || !completePayload.storageKey || !completePayload.originalName || !completePayload.size) {
-    throw new Error(completePayload.error || `Falha ao finalizar upload de ${kind}.`);
+  if (!put.ok) {
+    throw new Error(
+      `Falha ao enviar ${kind} para o Bunny Storage (${put.status}). ` +
+        "Confirme CORS na Storage Zone para https://aomeet-ai.vercel.app com metodo PUT.",
+    );
   }
 
   return {
-    storageKey: completePayload.storageKey,
-    originalName: completePayload.originalName,
-    size: completePayload.size,
+    storageKey: payload.storageKey,
+    originalName: file.name,
+    size: file.size,
   };
 }
 
@@ -180,7 +144,8 @@ async function uploadMeetingFile(
     }
   }
 
-  return uploadFileViaMultipart(file, kind, onProgress);
+  onProgress?.("Enviando direto ao storage...");
+  return uploadFileViaBunnyDirect(file, kind);
 }
 
 export function MeetingCreateForm({

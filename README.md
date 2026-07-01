@@ -8,7 +8,7 @@ AoMeet AI e o MVP da Aosafe Cloud Solutions para registrar reunioes, consolidar 
 - Prisma ORM com **Prisma Postgres** (managed database)
 - Prisma Accelerate para conexao em producao na Vercel
 - Autenticacao com cookie `httpOnly` e JWT assinado
-- Upload privado em **Backblaze B2** (producao) ou `storage/uploads` (local)
+- Upload privado em **Bunny.net Storage** (producao) ou `storage/uploads` (local)
 - Providers de IA (Groq/OpenAI) e transcricao (AssemblyAI/Whisper) com fallback mock
 - Deploy preparado para Vercel
 
@@ -32,20 +32,16 @@ AoMeet AI e o MVP da Aosafe Cloud Solutions para registrar reunioes, consolidar 
 - `OPENAI_API_KEY`: Whisper (transcricao) e/ou GPT (IA)
 - `ASSEMBLYAI_API_KEY`: transcricao de audio/video (prioridade sobre Whisper)
 - `GROQ_API_KEY`: LLM para resumos, tarefas e chat (prioridade sobre OpenAI)
-- `B2_BUCKET_NAME`: nome do bucket (ex: AoMeetAI)
-- `B2_ENDPOINT`: S3 Endpoint do bucket (pagina do bucket no Backblaze)
-- `B2_REGION`: regiao do endpoint (ex: us-east-005)
-- `B2_APPLICATION_KEY_ID`: **keyID** de uma Application Key (nao use a Master Key)
-- `B2_APPLICATION_KEY`: **applicationKey** gerada ao criar a key (so aparece uma vez)
+- `BUNNY_STORAGE_ZONE`: nome da storage zone (ex: aomeetai)
+- `BUNNY_STORAGE_HOSTNAME`: hostname regional (ex: ny.storage.bunnycdn.com)
+- `BUNNY_STORAGE_PASSWORD`: password da storage zone (FTP & API Access)
+- `BUNNY_CDN_HOSTNAME`: hostname do pull zone CDN (opcional, ex: aomeetai.b-cdn.net)
 
-### Configurar Backblaze B2
-1. Backblaze > **App Keys** > **Add a New Application Key**
-2. Nome: `aomeet-s3`
-3. Acesso: bucket **AoMeetAI**, permissao **Read and Write**
-4. Se restringir ao bucket, marque **Allow List All Bucket Names** (exigido pela API S3)
-5. Copie `keyID` → `B2_APPLICATION_KEY_ID` e `applicationKey` → `B2_APPLICATION_KEY`
-6. Na pagina do bucket, copie **S3 Endpoint** → `B2_ENDPOINT` e a regiao → `B2_REGION`
-7. **Nao use a Master Application Key** — ela nao funciona com a API S3 (`Malformed Access Key Id`)
+### Configurar Bunny.net Storage
+1. Bunny > **Storage** > zone **aomeetai**
+2. Copie **Password** (write) → `BUNNY_STORAGE_PASSWORD`
+3. Regiao **New York** → `BUNNY_STORAGE_HOSTNAME=ny.storage.bunnycdn.com`
+4. Para uploads grandes no browser, habilite **CORS** na storage zone para a URL da app (PUT)
 - `NEXT_PUBLIC_APP_URL`: URL publica da aplicacao
 
 ## Estrutura de pastas
@@ -58,7 +54,7 @@ AoMeet AI e o MVP da Aosafe Cloud Solutions para registrar reunioes, consolidar 
 
 ## Fluxo de upload
 1. O usuario cria a reuniao em `/meetings/new`.
-2. Audio, video e `.txt` sao gravados no Backblaze B2 ou storage local.
+2. Audio, video e `.txt` sao gravados no Bunny Storage ou storage local.
 3. Apos a transcricao, os arquivos sao **removidos automaticamente** do bucket para economizar espaco.
 4. A transcricao permanece no banco; download de midia so existe enquanto o arquivo ainda nao foi processado.
 
@@ -87,7 +83,7 @@ AoMeet AI e o MVP da Aosafe Cloud Solutions para registrar reunioes, consolidar 
 ## Hospedagem
 - GitHub + Vercel
 - Env vars minimas: `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`, `NEXT_PUBLIC_APP_URL`
-- Recomendado em producao: `B2_*`, `GROQ_API_KEY` ou `OPENAI_API_KEY`, `ASSEMBLYAI_API_KEY`
+- Recomendado em producao: `BUNNY_*`, `GROQ_API_KEY` ou `OPENAI_API_KEY`, `ASSEMBLYAI_API_KEY`
 
 ## Seguranca e LGPD
 - Upload privado sem URLs publicas desnecessarias.

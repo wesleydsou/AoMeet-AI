@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { uploadToB2, usesB2Storage } from "@/lib/services/b2-storage";
+import { uploadToBunny, usesBunnyStorage } from "@/lib/services/bunny-storage";
 import { storeUploadedFile, validateUploadMetadata, type UploadKind } from "@/lib/services/storage";
 
 export const maxDuration = 120;
@@ -53,11 +53,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    if (usesB2Storage()) {
+    if (usesBunnyStorage()) {
       const extension = getSafeExtension(file.name);
       const objectKey = `meetings/${uploadKind}/${Date.now()}-${randomUUID()}.${extension}`;
       const buffer = Buffer.from(await file.arrayBuffer());
-      const storageKey = await uploadToB2(objectKey, buffer, file.type || undefined);
+      const storageKey = await uploadToBunny(objectKey, buffer, file.type || undefined);
 
       return NextResponse.json({
         storageKey,

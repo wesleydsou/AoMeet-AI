@@ -1,7 +1,8 @@
 import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { deleteFromB2, downloadFromB2, isB2StorageKey, uploadToB2, usesB2Storage } from "@/lib/services/b2-storage";
+import { deleteFromB2, downloadFromB2, isB2StorageKey } from "@/lib/services/b2-storage";
+import { deleteFromBunny, downloadFromBunny, isBunnyStorageKey, uploadToBunny, usesBunnyStorage } from "@/lib/services/bunny-storage";
 import { uploadPolicy } from "@/lib/security";
 
 const uploadRoot = path.join(process.cwd(), "storage", "uploads");
@@ -83,8 +84,8 @@ export async function storeUploadedFile(file: File | null, kind: UploadKind): Pr
   const buffer = Buffer.from(await file.arrayBuffer());
   const objectKey = `meetings/${kind}/${Date.now()}-${randomUUID()}.${extension}`;
 
-  if (usesB2Storage()) {
-    const storageKey = await uploadToB2(objectKey, buffer, file.type || undefined);
+  if (usesBunnyStorage()) {
+    const storageKey = await uploadToBunny(objectKey, buffer, file.type || undefined);
 
     return {
       storageKey,
@@ -103,6 +104,10 @@ export async function storeUploadedFile(file: File | null, kind: UploadKind): Pr
 }
 
 export async function readStoredFile(storageKey: string) {
+  if (isBunnyStorageKey(storageKey)) {
+    return downloadFromBunny(storageKey);
+  }
+
   if (isB2StorageKey(storageKey)) {
     return downloadFromB2(storageKey);
   }
@@ -124,7 +129,7 @@ export function getStoredFileLabel(storageKey: string | null | undefined, origin
     return null;
   }
 
-  if (isB2StorageKey(storageKey)) {
+  if (isBunnyStorageKey(storageKey) || isB2StorageKey(storageKey)) {
     return originalName || storageKey.split("/").pop() || "arquivo";
   }
 
@@ -132,6 +137,10 @@ export function getStoredFileLabel(storageKey: string | null | undefined, origin
 }
 
 export async function deleteStoredFile(storageKey: string) {
+  if (isBunnyStorageKey(storageKey)) {
+    return deleteFromBunny(storageKey);
+  }
+
   if (isB2StorageKey(storageKey)) {
     return deleteFromB2(storageKey);
   }
