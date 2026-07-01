@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ArrowRight, BarChart3, Calendar, CheckCircle2, Clock, Sparkles } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { getOrCreateUsage } from "@/lib/usage";
@@ -44,12 +43,12 @@ export default async function DashboardPage() {
   });
 
   const stats = [
-    { label: "Total de reunioes", value: totalMeetings, icon: Calendar },
-    { label: "Este mes", value: currentMonthMeetings, icon: BarChart3 },
-    { label: "Creditos IA", value: usage.aiCreditsUsed, icon: Sparkles },
-    { label: "Processadas", value: processedCount, icon: CheckCircle2 },
-    { label: "Pendentes", value: pendingCount, icon: Clock },
-    { label: "Tarefas geradas", value: tasksCount, icon: ArrowRight },
+    { label: "Total de reunioes", value: totalMeetings, icon: "calendar" },
+    { label: "Este mes", value: currentMonthMeetings, icon: "bar-chart" },
+    { label: "Creditos IA", value: usage.aiCreditsUsed, icon: "sparkles" },
+    { label: "Processadas", value: processedCount, icon: "check-circle" },
+    { label: "Pendentes", value: pendingCount, icon: "clock" },
+    { label: "Tarefas geradas", value: tasksCount, icon: "arrow-right" },
   ];
 
   return (

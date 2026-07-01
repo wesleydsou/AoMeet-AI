@@ -2,7 +2,20 @@
 
 import Link from "next/link";
 import { motion } from "motion/react";
-import { LogOut, Menu } from "lucide-react";
+import {
+  Archive,
+  Bot,
+  ChartColumnBig,
+  FolderKanban,
+  Gauge,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Settings,
+  Share2,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth-actions";
 import { sidebarItems } from "@/lib/constants";
 import { Logo } from "@/components/logo";
@@ -12,6 +25,18 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+
+const sidebarIconMap: Record<(typeof sidebarItems)[number]["icon"], LucideIcon> = {
+  "layout-dashboard": LayoutDashboard,
+  "folder-kanban": FolderKanban,
+  "chart-column": ChartColumnBig,
+  bot: Bot,
+  "share-2": Share2,
+  archive: Archive,
+  settings: Settings,
+  gauge: Gauge,
+  users: Users,
+};
 
 type SidebarProps = {
   pathname: string;
@@ -23,8 +48,9 @@ type SidebarProps = {
 function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
   return (
     <nav className="space-y-1">
-      {sidebarItems.map(({ href, label, icon: Icon }) => {
+      {sidebarItems.map(({ href, label, icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
+        const Icon = sidebarIconMap[icon];
 
         return (
           <Link key={href} href={href} onClick={onNavigate}>
@@ -129,7 +155,7 @@ export function DesktopSidebar(props: SidebarProps) {
 
 export function MobileNav(props: SidebarProps) {
   return (
-    <header className="flex items-center justify-between border-b border-border bg-card/60 px-4 py-3 backdrop-blur-md lg:hidden">
+    <header className="flex items-center justify-between border-b border-border bg-card/80 px-4 py-3 backdrop-blur-md lg:hidden">
       <Logo compact />
       <Sheet>
         <SheetTrigger asChild>

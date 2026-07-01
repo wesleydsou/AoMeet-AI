@@ -25,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={cn("dark h-full", geistSans.variable, geistMono.variable)}>
+    <html lang="pt-BR" className={cn("h-full", geistSans.variable, geistMono.variable)}>
       <body className="min-h-full antialiased">
         <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
       </body>

@@ -1,15 +1,3 @@
-import {
-  Archive,
-  Bot,
-  ChartColumnBig,
-  FolderKanban,
-  Gauge,
-  LayoutDashboard,
-  Settings,
-  Share2,
-  Users,
-} from "lucide-react";
-
 export const planLimits = {
   FREE: { meetings: 3, aiCredits: 3, storageBytes: 100 * 1024 * 1024, uploadLabel: "Upload limitado" },
   PRO: { meetings: 30, aiCredits: 100, storageBytes: 1024 * 1024 * 1024, uploadLabel: "Exportacao PDF/Markdown" },
@@ -18,16 +6,16 @@ export const planLimits = {
 } as const;
 
 export const sidebarItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/meetings", label: "Minhas reunioes", icon: FolderKanban },
-  { href: "/reports", label: "Relatorios", icon: ChartColumnBig },
-  { href: "/ai-tools", label: "Ferramentas de IA", icon: Bot },
-  { href: "/shared", label: "Compartilhado comigo", icon: Share2 },
-  { href: "/archive", label: "Arquivo", icon: Archive },
-  { href: "/settings", label: "Configuracoes", icon: Settings },
-  { href: "/usage", label: "Uso do plano", icon: Gauge },
-  { href: "/clients", label: "Clientes", icon: Users },
-];
+  { href: "/dashboard", label: "Dashboard", icon: "layout-dashboard" },
+  { href: "/meetings", label: "Minhas reunioes", icon: "folder-kanban" },
+  { href: "/reports", label: "Relatorios", icon: "chart-column" },
+  { href: "/ai-tools", label: "Ferramentas de IA", icon: "bot" },
+  { href: "/shared", label: "Compartilhado comigo", icon: "share-2" },
+  { href: "/archive", label: "Arquivo", icon: "archive" },
+  { href: "/settings", label: "Configuracoes", icon: "settings" },
+  { href: "/usage", label: "Uso do plano", icon: "gauge" },
+  { href: "/clients", label: "Clientes", icon: "users" },
+] as const;
 
 export const meetingStatuses = [
   "draft",
