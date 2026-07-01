@@ -1,7 +1,7 @@
 "use server";
 
 import { AIRequestType, MeetingSourceType, SharePermission, TaskStatus } from "@prisma/client";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAIProvider } from "@/lib/providers/index";
@@ -152,6 +152,7 @@ export async function createMeetingAction(formData: FormData) {
 
   redirect(`/meetings/${meeting.id}?success=Reuniao criada com sucesso.`);
   } catch (error) {
+    unstable_rethrow(error);
     const message = error instanceof Error ? error.message : "Erro inesperado ao criar reuniao.";
     redirect(`/meetings/new?error=${encodeURIComponent(message)}`);
   }

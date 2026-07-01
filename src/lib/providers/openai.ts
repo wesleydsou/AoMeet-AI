@@ -38,7 +38,7 @@ export const openaiAIProvider: AIProvider = {
   async generateMeetingSummary(transcript) {
     return openaiJson<{ summary: string; risks: string; nextSteps: string; highlights: string[] }>(
       "Voce gera atas de reuniao em portugues do Brasil.",
-      `Gere um JSON com summary, risks, nextSteps e highlights a partir da transcricao:\n\n${transcript.slice(0, 120_000)}`,
+      `Gere um JSON com summary (string), risks (string ou array de strings), nextSteps (string ou array de strings) e highlights (array de strings) a partir da transcricao:\n\n${transcript.slice(0, 120_000)}`,
     );
   },
   async extractTasks(transcript) {

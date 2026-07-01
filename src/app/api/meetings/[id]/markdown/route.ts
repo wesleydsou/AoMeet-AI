@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { buildMinutesMarkdown, formatDateTime } from "@/lib/utils";
+import { buildMinutesMarkdown, formatDateTime, parseStoredListField } from "@/lib/utils";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
@@ -31,8 +31,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       dueDate: task.dueDate ? formatDateTime(task.dueDate) : null,
       status: task.status,
     })),
-    risks: meeting.risksText?.split(". ").filter(Boolean) || [],
-    nextSteps: meeting.nextStepsText?.split(". ").filter(Boolean) || [],
+    risks: parseStoredListField(meeting.risksText),
+    nextSteps: parseStoredListField(meeting.nextStepsText),
     followUp: meeting.followUpText || "",
   });
 

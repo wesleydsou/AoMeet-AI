@@ -15,7 +15,7 @@ import {
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getStoredFileLabel } from "@/lib/services/storage";
-import { buildMinutesMarkdown, formatDateTime, formatDuration } from "@/lib/utils";
+import { buildMinutesMarkdown, formatDateTime, formatDuration, parseStoredListField } from "@/lib/utils";
 
 const tabs = [
   { id: "overview", label: "Visao geral" },
@@ -68,8 +68,8 @@ export default async function MeetingDetailPage({
       dueDate: task.dueDate ? formatDateTime(task.dueDate) : null,
       status: task.status,
     })),
-    risks: meeting.risksText?.split(". ").filter(Boolean) || [],
-    nextSteps: meeting.nextStepsText?.split(". ").filter(Boolean) || [],
+    risks: parseStoredListField(meeting.risksText),
+    nextSteps: parseStoredListField(meeting.nextStepsText),
     followUp: meeting.followUpText || "",
   });
 

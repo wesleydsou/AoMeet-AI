@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { unstable_rethrow } from "next/navigation";
 import { createMeetingAction } from "@/lib/actions/meeting-actions";
 import type { UploadKind } from "@/lib/services/storage";
 
@@ -196,6 +197,7 @@ export function MeetingCreateForm({
         setUploadStatus("Salvando reuniao...");
         await createMeetingAction(formData);
       } catch (submitError) {
+        unstable_rethrow(submitError);
         setUploadStatus(null);
         setError(submitError instanceof Error ? submitError.message : "Falha ao criar reuniao.");
       }

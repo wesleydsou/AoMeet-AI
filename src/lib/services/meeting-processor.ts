@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getAIProvider, getTranscriptionProvider } from "@/lib/providers/index";
 import { incrementUsage, decrementUsage } from "@/lib/usage";
 import { purgeMeetingMediaFiles } from "@/lib/services/storage";
+import { normalizeAiTextField } from "@/lib/utils";
 
 async function buildTranscriptFromSegments(meetingId: string) {
   const segments = await prisma.meetingTranscriptSegment.findMany({
@@ -118,8 +119,8 @@ export async function processMeeting(meetingId: string) {
         summaryText: summaryData.summary,
         decisionsText: decisions.join("\n"),
         tasksText: tasks.map((item) => item.title).join("\n"),
-        risksText: summaryData.risks,
-        nextStepsText: summaryData.nextSteps,
+        risksText: normalizeAiTextField(summaryData.risks),
+        nextStepsText: normalizeAiTextField(summaryData.nextSteps),
         followUpText: followUp,
         aiChatContext: transcript,
         status: MeetingStatus.completed,

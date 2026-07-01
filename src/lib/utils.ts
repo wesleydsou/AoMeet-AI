@@ -38,6 +38,32 @@ export function serializeCsvValue(value: string | number | null | undefined) {
   return `"${raw.replaceAll('"', '""')}"`;
 }
 
+/** Converte resposta da IA (string ou array) para texto persistido no banco. */
+export function normalizeAiTextField(value: unknown): string {
+  if (value == null) {
+    return "";
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean).join("\n");
+  }
+
+  return String(value).trim();
+}
+
+/** Le listas salvas como texto (newline ou frases separadas por ponto). */
+export function parseStoredListField(value: string | null | undefined): string[] {
+  if (!value?.trim()) {
+    return [];
+  }
+
+  if (value.includes("\n")) {
+    return value.split("\n").map((item) => item.trim()).filter(Boolean);
+  }
+
+  return value.split(". ").map((item) => item.trim()).filter(Boolean);
+}
+
 export function buildMinutesMarkdown(input: {
   title: string;
   summary: string;
