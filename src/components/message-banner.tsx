@@ -1,3 +1,7 @@
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CheckCircle2, Info, XCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
+
 export function MessageBanner({
   message,
   tone = "info",
@@ -9,11 +13,19 @@ export function MessageBanner({
     return null;
   }
 
-  const tones = {
-    info: "border-sky-200 bg-sky-50 text-sky-700",
-    error: "border-rose-200 bg-rose-50 text-rose-700",
-    success: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  };
+  const Icon = tone === "error" ? XCircle : tone === "success" ? CheckCircle2 : Info;
 
-  return <div className={`mb-4 rounded-2xl border px-4 py-3 text-sm ${tones[tone]}`}>{message}</div>;
+  return (
+    <Alert
+      className={cn(
+        "mb-4",
+        tone === "error" && "border-destructive/30 bg-destructive/10 text-destructive",
+        tone === "success" && "border-chart-2/30 bg-chart-2/10 text-chart-2",
+        tone === "info" && "border-primary/30 bg-primary/10 text-primary",
+      )}
+    >
+      <Icon className="size-4" />
+      <AlertDescription>{message}</AlertDescription>
+    </Alert>
+  );
 }

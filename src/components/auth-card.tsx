@@ -1,6 +1,18 @@
+"use client";
+
 import Link from "next/link";
+import { motion } from "motion/react";
+import { Mic, Sparkles, Zap } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { MessageBanner } from "@/components/message-banner";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { FadeIn } from "@/components/motion/fade-in";
+
+const features = [
+  { icon: Mic, label: "Transcricao automatica" },
+  { icon: Sparkles, label: "Atas com IA" },
+  { icon: Zap, label: "Tarefas e decisoes" },
+];
 
 export function AuthCard({
   title,
@@ -18,40 +30,58 @@ export function AuthCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mx-auto grid min-h-screen max-w-6xl gap-10 px-4 py-10 lg:grid-cols-[1.15fr_0.85fr] lg:px-6">
-      <section className="flex flex-col justify-between rounded-[40px] border border-[var(--border)] bg-[linear-gradient(160deg,rgba(14,95,148,0.98),rgba(21,182,214,0.9))] p-8 text-white shadow-[0_30px_80px_rgba(14,95,148,0.25)] md:p-12">
+    <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-8 px-4 py-10 lg:grid-cols-2 lg:px-8">
+      <FadeIn className="hidden flex-col justify-center lg:flex">
         <Logo />
-        <div className="py-10">
-          <p className="text-sm font-black uppercase tracking-[0.24em] text-white/70">Aosafe Cloud Solutions</p>
-          <h1 className="mt-4 max-w-xl text-4xl font-black leading-tight md:text-5xl">
-            Atas inteligentes, transcricoes e tarefas automaticas para reunioes B2B.
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.5 }}
+          className="mt-10 space-y-4"
+        >
+          <p className="text-sm font-medium uppercase tracking-widest text-primary">Aosafe Cloud Solutions</p>
+          <h1 className="max-w-lg text-4xl font-semibold leading-tight tracking-tight text-foreground">
+            Transforme reunioes em acao com transcricao e IA.
           </h1>
-          <p className="mt-5 max-w-lg text-base text-white/80">
-            O MVP do AoMeet AI ja nasce preparado para autenticar usuarios, receber arquivos privados, processar conteudo e abrir caminho para a futura extensao do Google Meet.
+          <p className="max-w-md text-muted-foreground leading-relaxed">
+            Meet, Zoom ou Teams — o AoMeet AI captura, transcreve e gera atas, tarefas e follow-ups automaticamente.
           </p>
-        </div>
-        <div className="grid gap-3 md:grid-cols-3">
-          {["Dashboard limpo", "Resumo e tarefas mockados", "APIs para extensao"].map((item) => (
-            <div key={item} className="rounded-[24px] bg-white/10 p-4 text-sm font-semibold backdrop-blur">
-              {item}
-            </div>
+        </motion.div>
+        <div className="mt-10 grid gap-3 sm:grid-cols-3">
+          {features.map(({ icon: Icon, label }, index) => (
+            <motion.div
+              key={label}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 + index * 0.08 }}
+              className="rounded-xl border border-border bg-card/60 p-4 backdrop-blur-sm"
+            >
+              <Icon className="mb-2 size-5 text-primary" />
+              <p className="text-sm font-medium">{label}</p>
+            </motion.div>
           ))}
         </div>
-      </section>
+      </FadeIn>
 
-      <section className="glass-card rounded-[40px] p-8 md:p-10">
-        <p className="text-xs font-black uppercase tracking-[0.22em] text-[var(--primary)]">{action}</p>
-        <h2 className="mt-3 text-3xl font-black">{title}</h2>
-        <p className="mt-2 text-sm text-[var(--muted)]">{description}</p>
-        <MessageBanner message={error} tone="error" />
-        <div className="mt-6">{children}</div>
-        <p className="mt-6 text-sm text-[var(--muted)]">
-          {alternate.prompt}{" "}
-          <Link href={alternate.href} className="font-bold text-[var(--primary)]">
-            {alternate.label}
-          </Link>
-        </p>
-      </section>
+      <FadeIn delay={0.05}>
+        <Card className="border-border/80 bg-card/80 shadow-xl backdrop-blur-sm">
+          <CardHeader className="space-y-1">
+            <p className="text-xs font-medium uppercase tracking-widest text-primary">{action}</p>
+            <CardTitle className="text-2xl">{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <MessageBanner message={error} tone="error" />
+            {children}
+            <p className="mt-6 text-center text-sm text-muted-foreground">
+              {alternate.prompt}{" "}
+              <Link href={alternate.href} className="font-medium text-primary hover:underline">
+                {alternate.label}
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+      </FadeIn>
     </div>
   );
 }

@@ -1,5 +1,8 @@
 import { AuthCard } from "@/components/auth-card";
 import { loginAction } from "@/lib/actions/auth-actions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default async function LoginPage({
   searchParams,
@@ -17,11 +20,17 @@ export default async function LoginPage({
       error={params.error}
     >
       <form action={loginAction} className="space-y-4">
-        <input className="form-input" name="email" type="email" placeholder="seuemail@empresa.com" />
-        <input className="form-input" name="password" type="password" placeholder="Sua senha" />
-        <button className="btn-primary w-full" type="submit">
+        <div className="space-y-2">
+          <Label htmlFor="email">E-mail</Label>
+          <Input id="email" name="email" type="email" placeholder="seuemail@empresa.com" required />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="password">Senha</Label>
+          <Input id="password" name="password" type="password" placeholder="Sua senha" required />
+        </div>
+        <Button type="submit" className="w-full" size="lg">
           Entrar
-        </button>
+        </Button>
       </form>
     </AuthCard>
   );

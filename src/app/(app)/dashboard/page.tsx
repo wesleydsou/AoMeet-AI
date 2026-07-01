@@ -1,10 +1,14 @@
 import Link from "next/link";
+import { ArrowRight, BarChart3, Calendar, CheckCircle2, Clock, Sparkles } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { getOrCreateUsage } from "@/lib/usage";
 import { formatDate, relativeTime } from "@/lib/utils";
 import { SectionHeader } from "@/components/section-header";
 import { StatusBadge } from "@/components/status-badge";
+import { DashboardStats } from "@/components/dashboard-stats";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -26,7 +30,7 @@ export default async function DashboardPage() {
       where: { userId: user.id, status: { not: "archived" } },
     }),
     prisma.meeting.count({
-      where: { userId: user.id, status: { in: ["draft", "uploaded", "transcribing", "summarizing"] } },
+      where: { userId: user.id, status: { in: ["draft", "queued", "uploaded", "transcribing", "summarizing"] } },
     }),
   ]);
 
@@ -39,96 +43,94 @@ export default async function DashboardPage() {
     },
   });
 
-  const cards = [
-    { label: "Total de reunioes", value: totalMeetings.toString().padStart(2, "0") },
-    { label: "Reunioes este mes", value: currentMonthMeetings.toString().padStart(2, "0") },
-    { label: "Creditos IA usados", value: usage.aiCreditsUsed.toString().padStart(2, "0") },
-    { label: "Reunioes processadas", value: processedCount.toString().padStart(2, "0") },
-    { label: "Reunioes pendentes", value: pendingCount.toString().padStart(2, "0") },
-    { label: "Tarefas geradas", value: tasksCount.toString().padStart(2, "0") },
+  const stats = [
+    { label: "Total de reunioes", value: totalMeetings, icon: Calendar },
+    { label: "Este mes", value: currentMonthMeetings, icon: BarChart3 },
+    { label: "Creditos IA", value: usage.aiCreditsUsed, icon: Sparkles },
+    { label: "Processadas", value: processedCount, icon: CheckCircle2 },
+    { label: "Pendentes", value: pendingCount, icon: Clock },
+    { label: "Tarefas geradas", value: tasksCount, icon: ArrowRight },
   ];
 
   return (
     <>
       <SectionHeader
-        eyebrow="Visao Geral"
-        title="Painel operacional do AoMeet AI"
-        description="Acompanhe o ritmo das reunioes, o consumo mensal do plano e os resultados que a IA ja entregou para o time."
+        eyebrow="Dashboard"
+        title={`Ola, ${user.name.split(" ")[0]}`}
+        description="Acompanhe reunioes, consumo do plano e resultados gerados pela IA."
         action={
           <>
-            <Link href="/meetings/new" className="btn-primary">
-              Nova reuniao
-            </Link>
-            <Link href="/reports" className="btn-secondary">
-              Ver relatorios
-            </Link>
+            <Button asChild>
+              <Link href="/meetings/new">Nova reuniao</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/reports">Relatorios</Link>
+            </Button>
           </>
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {cards.map((card, index) => (
-          <div
-            key={card.label}
-            className="glass-card rounded-[28px] p-6"
-            style={{ animationDelay: `${index * 60}ms` }}
-          >
-            <p className="text-sm text-[var(--muted)]">{card.label}</p>
-            <p className="mt-5 text-4xl font-black text-[var(--foreground)]">{card.value}</p>
-          </div>
-        ))}
-      </div>
+      <DashboardStats stats={stats} />
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[1.4fr_0.6fr]">
-        <section className="glass-card rounded-[32px] p-6">
-          <div className="mb-4 flex items-center justify-between">
+      <div className="mt-8 grid gap-6 xl:grid-cols-[1.5fr_1fr]">
+        <Card className="bg-card/80">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <div>
-              <p className="text-lg font-black">Ultimas reunioes</p>
-              <p className="text-sm text-[var(--muted)]">Historico recente com acesso rapido ao detalhe.</p>
+              <CardTitle>Ultimas reunioes</CardTitle>
+              <CardDescription>Acesso rapido ao detalhe e status do processamento.</CardDescription>
             </div>
-            <Link href="/meetings" className="text-sm font-bold text-[var(--primary)]">
-              Ver todas
-            </Link>
-          </div>
-
-          <div className="space-y-4">
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/meetings">Ver todas</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-2">
             {meetings.length ? (
               meetings.map((meeting) => (
                 <Link
                   key={meeting.id}
                   href={`/meetings/${meeting.id}`}
-                  className="flex flex-col gap-3 rounded-[24px] border border-[var(--border)] bg-white/80 p-4 transition hover:-translate-y-0.5 hover:shadow-lg md:flex-row md:items-center md:justify-between"
+                  className="group flex items-center justify-between gap-4 rounded-lg border border-border/60 bg-muted/20 px-4 py-3 transition-colors hover:border-primary/30 hover:bg-muted/40"
                 >
-                  <div>
-                    <p className="font-bold">{meeting.title}</p>
-                    <p className="mt-1 text-sm text-[var(--muted)]">
-                      {formatDate(meeting.meetingDate)} • {meeting.platform} • {relativeTime(meeting.createdAt)}
+                  <div className="min-w-0">
+                    <p className="truncate font-medium group-hover:text-primary">{meeting.title}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {formatDate(meeting.meetingDate)} · {meeting.platform} · {relativeTime(meeting.createdAt)}
                     </p>
                   </div>
                   <StatusBadge status={meeting.status} />
                 </Link>
               ))
             ) : (
-              <p className="text-sm text-[var(--muted)]">Nenhuma reuniao criada ainda. Comece pelo upload ou pela transcricao manual.</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Nenhuma reuniao ainda.{" "}
+                <Link href="/meetings/new" className="font-medium text-primary hover:underline">
+                  Criar primeira reuniao
+                </Link>
+              </p>
             )}
-          </div>
-        </section>
+          </CardContent>
+        </Card>
 
-        <section className="glass-card rounded-[32px] p-6">
-          <p className="text-lg font-black">Checklist do MVP</p>
-          <div className="mt-5 space-y-3 text-sm text-[var(--muted)]">
+        <Card className="bg-card/80">
+          <CardHeader>
+            <CardTitle>Proximos passos</CardTitle>
+            <CardDescription>Comece por aqui para extrair valor do AoMeet AI.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
             {[
-              "Autenticacao segura com rotas protegidas.",
-              "Upload privado e fluxo mockado de transcricao.",
-              "Resumo, decisoes, tarefas e chat com IA.",
-              "APIs internas preparadas para extensao Chrome.",
-            ].map((item) => (
-              <div key={item} className="rounded-[22px] border border-[var(--border)] bg-white/75 p-4">
-                {item}
+              "Envie audio ou video de uma reuniao recente.",
+              "Processe para gerar ata, tarefas e decisoes.",
+              "Configure o token da extensao em Configuracoes.",
+            ].map((item, index) => (
+              <div key={item} className="flex gap-3 rounded-lg border border-border/60 bg-muted/20 p-3 text-sm">
+                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
+                  {index + 1}
+                </span>
+                <span className="text-muted-foreground">{item}</span>
               </div>
             ))}
-          </div>
-        </section>
+          </CardContent>
+        </Card>
       </div>
     </>
   );

@@ -1,13 +1,19 @@
-export function Logo() {
+import { Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+export function Logo({ compact = false }: { compact?: boolean }) {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#0e5f94_0%,#15b6d6_100%)] text-lg font-black text-white shadow-lg">
-        AO
+      <div className="relative flex size-10 items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/25">
+        <Sparkles className="size-5 text-primary-foreground" />
+        <div className="absolute inset-0 rounded-xl bg-linear-to-br from-white/20 to-transparent" />
       </div>
-      <div>
-        <p className="text-sm font-black uppercase tracking-[0.22em] text-[var(--primary)]">AoMeet AI</p>
-        <p className="text-xs text-[var(--muted)]">Atas, transcricoes e tarefas automaticas</p>
-      </div>
+      {!compact ? (
+        <div>
+          <p className="text-sm font-semibold tracking-tight text-foreground">AoMeet AI</p>
+          <p className="text-xs text-muted-foreground">Reunioes inteligentes</p>
+        </div>
+      ) : null}
     </div>
   );
 }
