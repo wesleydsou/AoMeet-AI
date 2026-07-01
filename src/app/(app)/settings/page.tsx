@@ -59,7 +59,7 @@ export default async function SettingsPage({
             </button>
           </form>
           <p className="mt-4 text-sm text-[var(--muted)]">
-            Arquivos ficam em Vercel Blob (producao) ou storage local (desenvolvimento). Chaves de API de IA e transcricao permanecem apenas no servidor.
+            Arquivos ficam no Backblaze B2 (producao) ou storage local (desenvolvimento). Chaves de API de IA e transcricao permanecem apenas no servidor.
           </p>
         </div>
       </div>

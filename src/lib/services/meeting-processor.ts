@@ -1,7 +1,8 @@
 import { AIRequestType, MeetingStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAIProvider, getTranscriptionProvider } from "@/lib/providers/index";
-import { incrementUsage } from "@/lib/usage";
+import { incrementUsage, decrementUsage } from "@/lib/usage";
+import { purgeMeetingMediaFiles } from "@/lib/services/storage";
 
 async function buildTranscriptFromSegments(meetingId: string) {
   const segments = await prisma.meetingTranscriptSegment.findMany({
@@ -64,6 +65,32 @@ export async function processMeeting(meetingId: string) {
     }
 
     transcript = await transcriptionProvider.cleanupTranscript(transcript);
+
+    const bytesFreed = await purgeMeetingMediaFiles({
+      audioStorageKey: meeting.audioStorageKey,
+      videoStorageKey: meeting.videoStorageKey,
+      transcriptImportStorageKey: meeting.transcriptImportStorageKey,
+    });
+
+    if (bytesFreed > 0) {
+      await decrementUsage(meeting.userId, { storageBytes: bytesFreed });
+    }
+
+    await prisma.meeting.update({
+      where: { id: meetingId },
+      data: {
+        audioStorageKey: null,
+        videoStorageKey: null,
+        transcriptImportStorageKey: null,
+        audioOriginalName: null,
+        videoOriginalName: null,
+        transcriptOriginalName: null,
+      },
+    });
+
+    await logStep(meetingId, "storage_purge", "done", "Arquivos de midia removidos apos transcricao.", {
+      bytesFreed,
+    });
 
     await logStep(meetingId, "cleanup", "done", "Transcricao consolidada.", { transcriptLength: transcript.length });
 

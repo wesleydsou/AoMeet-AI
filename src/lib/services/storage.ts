@@ -1,7 +1,7 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { put } from "@vercel/blob";
+import { deleteFromB2, downloadFromB2, isB2StorageKey, uploadToB2, usesB2Storage } from "@/lib/services/b2-storage";
 import { uploadPolicy } from "@/lib/security";
 
 const uploadRoot = path.join(process.cwd(), "storage", "uploads");
@@ -17,10 +17,6 @@ export type StoredFile = {
 function getSafeExtension(fileName: string) {
   const extension = fileName.includes(".") ? fileName.split(".").pop() || "bin" : "bin";
   return extension.toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-function usesBlobStorage() {
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim());
 }
 
 async function storeLocally(buffer: Buffer, extension: string) {
@@ -50,17 +46,13 @@ export async function storeUploadedFile(file: File | null, kind: UploadKind): Pr
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const blobPath = `meetings/${kind}/${Date.now()}-${randomUUID()}.${extension}`;
+  const objectKey = `meetings/${kind}/${Date.now()}-${randomUUID()}.${extension}`;
 
-  if (usesBlobStorage()) {
-    const blob = await put(blobPath, buffer, {
-      access: "private",
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-      contentType: file.type || undefined,
-    });
+  if (usesB2Storage()) {
+    const storageKey = await uploadToB2(objectKey, buffer, file.type || undefined);
 
     return {
-      storageKey: blob.url,
+      storageKey,
       size: buffer.byteLength,
       originalName: file.name,
     };
@@ -76,10 +68,14 @@ export async function storeUploadedFile(file: File | null, kind: UploadKind): Pr
 }
 
 export async function readStoredFile(storageKey: string) {
+  if (isB2StorageKey(storageKey)) {
+    return downloadFromB2(storageKey);
+  }
+
   if (storageKey.startsWith("http://") || storageKey.startsWith("https://")) {
     const response = await fetch(storageKey);
     if (!response.ok) {
-      throw new Error(`Failed to read blob: ${response.status}`);
+      throw new Error(`Failed to read remote file: ${response.status}`);
     }
 
     return Buffer.from(await response.arrayBuffer());
@@ -93,5 +89,49 @@ export function getStoredFileLabel(storageKey: string | null | undefined, origin
     return null;
   }
 
+  if (isB2StorageKey(storageKey)) {
+    return originalName || storageKey.split("/").pop() || "arquivo";
+  }
+
   return originalName || path.basename(storageKey);
+}
+
+export async function deleteStoredFile(storageKey: string) {
+  if (isB2StorageKey(storageKey)) {
+    return deleteFromB2(storageKey);
+  }
+
+  if (storageKey.startsWith("http://") || storageKey.startsWith("https://")) {
+    return 0;
+  }
+
+  try {
+    const fileStat = await stat(storageKey);
+    await unlink(storageKey);
+    return fileStat.size;
+  } catch {
+    return 0;
+  }
+}
+
+export async function purgeMeetingMediaFiles(input: {
+  audioStorageKey?: string | null;
+  videoStorageKey?: string | null;
+  transcriptImportStorageKey?: string | null;
+}) {
+  const keys = [input.audioStorageKey, input.videoStorageKey, input.transcriptImportStorageKey].filter(
+    (key): key is string => Boolean(key),
+  );
+
+  let bytesFreed = 0;
+
+  for (const key of keys) {
+    try {
+      bytesFreed += await deleteStoredFile(key);
+    } catch {
+      // Segue removendo os demais arquivos mesmo se um falhar.
+    }
+  }
+
+  return bytesFreed;
 }

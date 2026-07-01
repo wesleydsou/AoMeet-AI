@@ -8,7 +8,7 @@ AoMeet AI e o MVP da Aosafe Cloud Solutions para registrar reunioes, consolidar 
 - Prisma ORM com **Prisma Postgres** (managed database)
 - Prisma Accelerate para conexao em producao na Vercel
 - Autenticacao com cookie `httpOnly` e JWT assinado
-- Upload privado em Vercel Blob (producao) ou `storage/uploads` (local)
+- Upload privado em **Backblaze B2** (producao) ou `storage/uploads` (local)
 - Providers de IA (Groq/OpenAI) e transcricao (AssemblyAI/Whisper) com fallback mock
 - Deploy preparado para Vercel
 
@@ -32,7 +32,12 @@ AoMeet AI e o MVP da Aosafe Cloud Solutions para registrar reunioes, consolidar 
 - `OPENAI_API_KEY`: Whisper (transcricao) e/ou GPT (IA)
 - `ASSEMBLYAI_API_KEY`: transcricao de audio/video (prioridade sobre Whisper)
 - `GROQ_API_KEY`: LLM para resumos, tarefas e chat (prioridade sobre OpenAI)
-- `BLOB_READ_WRITE_TOKEN`: upload privado na Vercel (opcional em dev local)
+- `B2_BUCKET_NAME`: nome do bucket (ex: AoMeetAI)
+- `B2_BUCKET_ID`: ID do bucket no painel B2
+- `B2_ENDPOINT`: endpoint S3 (ex: https://s3.us-east-005.backblazeb2.com)
+- `B2_REGION`: regiao (ex: us-east-005)
+- `B2_APPLICATION_KEY_ID`: key ID da application key
+- `B2_APPLICATION_KEY`: application key (segredo)
 - `NEXT_PUBLIC_APP_URL`: URL publica da aplicacao
 
 ## Estrutura de pastas
@@ -45,7 +50,7 @@ AoMeet AI e o MVP da Aosafe Cloud Solutions para registrar reunioes, consolidar 
 
 ## Fluxo de upload
 1. O usuario cria a reuniao em `/meetings/new`.
-2. Audio, video e `.txt` sao gravados em Vercel Blob ou storage local.
+2. Audio, video e `.txt` sao gravados no Backblaze B2 ou storage local.
 3. Apenas chaves/URLs privadas ficam no banco — download via rota autenticada.
 
 ## Fluxo de processamento
@@ -68,7 +73,7 @@ AoMeet AI e o MVP da Aosafe Cloud Solutions para registrar reunioes, consolidar 
 ## Hospedagem
 - GitHub + Vercel
 - Env vars minimas: `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`, `NEXT_PUBLIC_APP_URL`
-- Recomendado em producao: `BLOB_READ_WRITE_TOKEN`, `GROQ_API_KEY` ou `OPENAI_API_KEY`, `ASSEMBLYAI_API_KEY`
+- Recomendado em producao: `B2_*`, `GROQ_API_KEY` ou `OPENAI_API_KEY`, `ASSEMBLYAI_API_KEY`
 
 ## Seguranca e LGPD
 - Upload privado sem URLs publicas desnecessarias.

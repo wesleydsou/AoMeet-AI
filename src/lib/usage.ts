@@ -38,6 +38,18 @@ export async function incrementUsage(userId: string, input: { meetings?: number;
   });
 }
 
+export async function decrementUsage(userId: string, input: { storageBytes?: number }) {
+  const usage = await getOrCreateUsage(userId);
+  const nextStorage = Math.max(0, usage.storageUsed - (input.storageBytes ?? 0));
+
+  return prisma.monthlyUsage.update({
+    where: { id: usage.id },
+    data: {
+      storageUsed: nextStorage,
+    },
+  });
+}
+
 export async function canCreateMeeting(userId: string, plan: Plan) {
   const usage = await getOrCreateUsage(userId);
   const limits = getPlanLimits(plan);
