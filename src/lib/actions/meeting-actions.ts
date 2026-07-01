@@ -6,13 +6,44 @@ import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAIProvider } from "@/lib/providers/index";
 import { enqueueMeetingProcessing } from "@/lib/services/process-queue";
-import { storeUploadedFile } from "@/lib/services/storage";
+import { storeUploadedFile, type StoredFile, type UploadKind } from "@/lib/services/storage";
 import { canCreateMeeting, canUseAi, canUseStorage, incrementUsage } from "@/lib/usage";
 import { askAiSchema, meetingSchema, shareMeetingSchema } from "@/lib/validations/meeting";
 import { updateTaskSchema } from "@/lib/validations/extension";
 
+function readPreUploadedFile(formData: FormData, kind: UploadKind): StoredFile | null {
+  const storageKey = formData.get(`${kind}StorageKey`);
+  if (typeof storageKey !== "string" || !storageKey) {
+    return null;
+  }
+
+  const originalName = String(formData.get(`${kind}OriginalName`) || "");
+  const size = Number(formData.get(`${kind}Size`) || 0);
+
+  if (!originalName || !size) {
+    throw new Error(`Metadados invalidos para upload de ${kind}.`);
+  }
+
+  return { storageKey, originalName, size };
+}
+
+async function resolveUploadedFile(
+  formData: FormData,
+  kind: UploadKind,
+  fileField: string,
+): Promise<StoredFile | null> {
+  const preUploaded = readPreUploadedFile(formData, kind);
+  if (preUploaded) {
+    return preUploaded;
+  }
+
+  return storeUploadedFile(formData.get(fileField) as File | null, kind);
+}
+
 export async function createMeetingAction(formData: FormData) {
   const user = await requireUser();
+
+  try {
   const limitCheck = await canCreateMeeting(user);
 
   if (!limitCheck.allowed) {
@@ -56,9 +87,9 @@ export async function createMeetingAction(formData: FormData) {
 
   try {
     [audioFile, videoFile, transcriptFile] = await Promise.all([
-      storeUploadedFile(formData.get("audioFile") as File | null, "audio"),
-      storeUploadedFile(formData.get("videoFile") as File | null, "video"),
-      storeUploadedFile(formData.get("transcriptFile") as File | null, "transcript"),
+      resolveUploadedFile(formData, "audio", "audioFile"),
+      resolveUploadedFile(formData, "video", "videoFile"),
+      resolveUploadedFile(formData, "transcript", "transcriptFile"),
     ]);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha ao validar upload.";
@@ -120,6 +151,10 @@ export async function createMeetingAction(formData: FormData) {
   }
 
   redirect(`/meetings/${meeting.id}?success=Reuniao criada com sucesso.`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro inesperado ao criar reuniao.";
+    redirect(`/meetings/new?error=${encodeURIComponent(message)}`);
+  }
 }
 
 export async function reprocessMeetingAction(formData: FormData) {

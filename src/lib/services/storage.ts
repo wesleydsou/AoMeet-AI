@@ -6,7 +6,7 @@ import { uploadPolicy } from "@/lib/security";
 
 const uploadRoot = path.join(process.cwd(), "storage", "uploads");
 
-type UploadKind = keyof typeof uploadPolicy;
+export type UploadKind = keyof typeof uploadPolicy;
 
 export type StoredFile = {
   storageKey: string;
@@ -17,6 +17,42 @@ export type StoredFile = {
 function getSafeExtension(fileName: string) {
   const extension = fileName.includes(".") ? fileName.split(".").pop() || "bin" : "bin";
   return extension.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function isAllowedUpload(input: { fileName: string; fileSize: number; contentType?: string }, kind: UploadKind) {
+  const policy = uploadPolicy[kind];
+  const extension = getSafeExtension(input.fileName);
+  const mime = (input.contentType || "").toLowerCase().trim();
+
+  const hasValidExtension = (policy.allowedExtensions as readonly string[]).includes(extension);
+  const hasValidMime =
+    !mime ||
+    mime === "application/octet-stream" ||
+    (policy.allowedMimePrefixes as readonly string[]).some((allowed) => mime.startsWith(allowed));
+
+  if (!hasValidExtension || !hasValidMime) {
+    return false;
+  }
+
+  return input.fileSize <= policy.maxBytes;
+}
+
+export function validateUploadMetadata(input: {
+  kind: UploadKind;
+  fileName: string;
+  fileSize: number;
+  contentType?: string;
+}) {
+  const policy = uploadPolicy[input.kind];
+
+  if (!isAllowedUpload(input, input.kind)) {
+    throw new Error(`Tipo de arquivo nao permitido para ${input.kind}. Use ${policy.allowedExtensions.join(", ")}.`);
+  }
+
+  if (input.fileSize > policy.maxBytes) {
+    const limitMb = Math.round(policy.maxBytes / (1024 * 1024));
+    throw new Error(`Arquivo excede o limite de ${limitMb} MB para ${input.kind}.`);
+  }
 }
 
 async function storeLocally(buffer: Buffer, extension: string) {
@@ -33,18 +69,17 @@ export async function storeUploadedFile(file: File | null, kind: UploadKind): Pr
   }
 
   const policy = uploadPolicy[kind];
-  const extension = getSafeExtension(file.name);
-  const hasValidMime = (policy.allowedMimePrefixes as readonly string[]).some((allowed) => file.type.startsWith(allowed));
-  const hasValidExtension = (policy.allowedExtensions as readonly string[]).includes(extension);
 
-  if (!hasValidMime || !hasValidExtension) {
-    throw new Error(`Tipo de arquivo nao permitido para ${kind}.`);
+  if (!isAllowedUpload({ fileName: file.name, fileSize: file.size, contentType: file.type }, kind)) {
+    throw new Error(`Tipo de arquivo nao permitido para ${kind}. Use ${policy.allowedExtensions.join(", ")}.`);
   }
 
   if (file.size > policy.maxBytes) {
-    throw new Error(`Arquivo excede o limite permitido para ${kind}.`);
+    const limitMb = Math.round(policy.maxBytes / (1024 * 1024));
+    throw new Error(`Arquivo excede o limite de ${limitMb} MB para ${kind}.`);
   }
 
+  const extension = getSafeExtension(file.name);
   const buffer = Buffer.from(await file.arrayBuffer());
   const objectKey = `meetings/${kind}/${Date.now()}-${randomUUID()}.${extension}`;
 
