@@ -33,11 +33,19 @@ AoMeet AI e o MVP da Aosafe Cloud Solutions para registrar reunioes, consolidar 
 - `ASSEMBLYAI_API_KEY`: transcricao de audio/video (prioridade sobre Whisper)
 - `GROQ_API_KEY`: LLM para resumos, tarefas e chat (prioridade sobre OpenAI)
 - `B2_BUCKET_NAME`: nome do bucket (ex: AoMeetAI)
-- `B2_BUCKET_ID`: ID do bucket no painel B2
-- `B2_ENDPOINT`: endpoint S3 (ex: https://s3.us-east-005.backblazeb2.com)
-- `B2_REGION`: regiao (ex: us-east-005)
-- `B2_APPLICATION_KEY_ID`: key ID da application key
-- `B2_APPLICATION_KEY`: application key (segredo)
+- `B2_ENDPOINT`: S3 Endpoint do bucket (pagina do bucket no Backblaze)
+- `B2_REGION`: regiao do endpoint (ex: us-east-005)
+- `B2_APPLICATION_KEY_ID`: **keyID** de uma Application Key (nao use a Master Key)
+- `B2_APPLICATION_KEY`: **applicationKey** gerada ao criar a key (so aparece uma vez)
+
+### Configurar Backblaze B2
+1. Backblaze > **App Keys** > **Add a New Application Key**
+2. Nome: `aomeet-s3`
+3. Acesso: bucket **AoMeetAI**, permissao **Read and Write**
+4. Se restringir ao bucket, marque **Allow List All Bucket Names** (exigido pela API S3)
+5. Copie `keyID` → `B2_APPLICATION_KEY_ID` e `applicationKey` → `B2_APPLICATION_KEY`
+6. Na pagina do bucket, copie **S3 Endpoint** → `B2_ENDPOINT` e a regiao → `B2_REGION`
+7. **Nao use a Master Application Key** — ela nao funciona com a API S3 (`Malformed Access Key Id`)
 - `NEXT_PUBLIC_APP_URL`: URL publica da aplicacao
 
 ## Estrutura de pastas

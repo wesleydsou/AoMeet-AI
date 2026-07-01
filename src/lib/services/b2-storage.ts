@@ -9,27 +9,23 @@ import {
   CompleteMultipartUploadCommand,
   AbortMultipartUploadCommand,
 } from "@aws-sdk/client-s3";
+import {
+  B2_PREFIX,
+  formatB2Error,
+  getB2Config,
+  isB2StorageKey,
+  toB2StorageKey,
+  toObjectKey,
+  usesB2Storage,
+} from "@/lib/services/b2-config";
 
-const B2_PREFIX = "b2:";
-
-function getB2Config() {
-  const bucket = process.env.B2_BUCKET_NAME?.trim();
-  const keyId = process.env.B2_APPLICATION_KEY_ID?.trim();
-  const applicationKey = process.env.B2_APPLICATION_KEY?.trim();
-  const endpoint = process.env.B2_ENDPOINT?.trim().replace(/\/$/, "") || "https://s3.us-east-005.backblazeb2.com";
-  const region = process.env.B2_REGION?.trim() || "us-east-005";
-
-  if (!bucket || !keyId || !applicationKey) {
-    return null;
-  }
-
-  return { bucket, keyId, applicationKey, endpoint, region };
-}
+export { B2_PREFIX, isB2StorageKey, toB2StorageKey, toObjectKey, usesB2Storage, getB2Config };
 
 function createB2Client(config: NonNullable<ReturnType<typeof getB2Config>>) {
   return new S3Client({
     endpoint: config.endpoint,
     region: config.region,
+    forcePathStyle: true,
     credentials: {
       accessKeyId: config.keyId,
       secretAccessKey: config.applicationKey,
@@ -39,20 +35,12 @@ function createB2Client(config: NonNullable<ReturnType<typeof getB2Config>>) {
   });
 }
 
-export function usesB2Storage() {
-  return Boolean(getB2Config());
-}
-
-export function isB2StorageKey(storageKey: string) {
-  return storageKey.startsWith(B2_PREFIX);
-}
-
-export function toB2StorageKey(objectKey: string) {
-  return `${B2_PREFIX}${objectKey}`;
-}
-
-function toObjectKey(storageKey: string) {
-  return storageKey.slice(B2_PREFIX.length);
+async function withB2Error<T>(operation: () => Promise<T>) {
+  try {
+    return await operation();
+  } catch (error) {
+    throw new Error(formatB2Error(error));
+  }
 }
 
 export async function uploadToB2(objectKey: string, buffer: Buffer, contentType?: string) {
@@ -63,16 +51,18 @@ export async function uploadToB2(objectKey: string, buffer: Buffer, contentType?
 
   const client = createB2Client(config);
 
-  await client.send(
-    new PutObjectCommand({
-      Bucket: config.bucket,
-      Key: objectKey,
-      Body: buffer,
-      ContentType: contentType,
-    }),
-  );
+  return withB2Error(async () => {
+    await client.send(
+      new PutObjectCommand({
+        Bucket: config.bucket,
+        Key: objectKey,
+        Body: buffer,
+        ContentType: contentType,
+      }),
+    );
 
-  return toB2StorageKey(objectKey);
+    return toB2StorageKey(objectKey);
+  });
 }
 
 export async function startMultipartUpload(objectKey: string, contentType?: string) {
@@ -82,23 +72,26 @@ export async function startMultipartUpload(objectKey: string, contentType?: stri
   }
 
   const client = createB2Client(config);
-  const response = await client.send(
-    new CreateMultipartUploadCommand({
-      Bucket: config.bucket,
-      Key: objectKey,
-      ContentType: contentType || "application/octet-stream",
-    }),
-  );
 
-  if (!response.UploadId) {
-    throw new Error("Falha ao iniciar upload multipart no B2.");
-  }
+  return withB2Error(async () => {
+    const response = await client.send(
+      new CreateMultipartUploadCommand({
+        Bucket: config.bucket,
+        Key: objectKey,
+        ContentType: contentType || "application/octet-stream",
+      }),
+    );
 
-  return {
-    uploadId: response.UploadId,
-    objectKey,
-    storageKey: toB2StorageKey(objectKey),
-  };
+    if (!response.UploadId) {
+      throw new Error("Falha ao iniciar upload multipart no B2.");
+    }
+
+    return {
+      uploadId: response.UploadId,
+      objectKey,
+      storageKey: toB2StorageKey(objectKey),
+    };
+  });
 }
 
 export async function uploadMultipartPart(input: {
@@ -113,21 +106,24 @@ export async function uploadMultipartPart(input: {
   }
 
   const client = createB2Client(config);
-  const response = await client.send(
-    new UploadPartCommand({
-      Bucket: config.bucket,
-      Key: input.objectKey,
-      UploadId: input.uploadId,
-      PartNumber: input.partNumber,
-      Body: input.body,
-    }),
-  );
 
-  if (!response.ETag) {
-    throw new Error(`Falha ao enviar parte ${input.partNumber}.`);
-  }
+  return withB2Error(async () => {
+    const response = await client.send(
+      new UploadPartCommand({
+        Bucket: config.bucket,
+        Key: input.objectKey,
+        UploadId: input.uploadId,
+        PartNumber: input.partNumber,
+        Body: input.body,
+      }),
+    );
 
-  return { partNumber: input.partNumber, etag: response.ETag };
+    if (!response.ETag) {
+      throw new Error(`Falha ao enviar parte ${input.partNumber}.`);
+    }
+
+    return { partNumber: input.partNumber, etag: response.ETag };
+  });
 }
 
 export async function completeMultipartUpload(input: {
@@ -141,24 +137,27 @@ export async function completeMultipartUpload(input: {
   }
 
   const client = createB2Client(config);
-  await client.send(
-    new CompleteMultipartUploadCommand({
-      Bucket: config.bucket,
-      Key: input.objectKey,
-      UploadId: input.uploadId,
-      MultipartUpload: {
-        Parts: input.parts
-          .slice()
-          .sort((a, b) => a.partNumber - b.partNumber)
-          .map((part) => ({
-            PartNumber: part.partNumber,
-            ETag: part.etag,
-          })),
-      },
-    }),
-  );
 
-  return toB2StorageKey(input.objectKey);
+  return withB2Error(async () => {
+    await client.send(
+      new CompleteMultipartUploadCommand({
+        Bucket: config.bucket,
+        Key: input.objectKey,
+        UploadId: input.uploadId,
+        MultipartUpload: {
+          Parts: input.parts
+            .slice()
+            .sort((a, b) => a.partNumber - b.partNumber)
+            .map((part) => ({
+              PartNumber: part.partNumber,
+              ETag: part.etag,
+            })),
+        },
+      }),
+    );
+
+    return toB2StorageKey(input.objectKey);
+  });
 }
 
 export async function abortMultipartUpload(objectKey: string, uploadId: string) {
@@ -168,13 +167,18 @@ export async function abortMultipartUpload(objectKey: string, uploadId: string) 
   }
 
   const client = createB2Client(config);
-  await client.send(
-    new AbortMultipartUploadCommand({
-      Bucket: config.bucket,
-      Key: objectKey,
-      UploadId: uploadId,
-    }),
-  );
+
+  try {
+    await client.send(
+      new AbortMultipartUploadCommand({
+        Bucket: config.bucket,
+        Key: objectKey,
+        UploadId: uploadId,
+      }),
+    );
+  } catch {
+    // ignore abort errors
+  }
 }
 
 export async function downloadFromB2(storageKey: string) {
@@ -184,19 +188,22 @@ export async function downloadFromB2(storageKey: string) {
   }
 
   const client = createB2Client(config);
-  const response = await client.send(
-    new GetObjectCommand({
-      Bucket: config.bucket,
-      Key: toObjectKey(storageKey),
-    }),
-  );
 
-  const bytes = await response.Body?.transformToByteArray();
-  if (!bytes) {
-    throw new Error("Arquivo vazio no Backblaze B2.");
-  }
+  return withB2Error(async () => {
+    const response = await client.send(
+      new GetObjectCommand({
+        Bucket: config.bucket,
+        Key: toObjectKey(storageKey),
+      }),
+    );
 
-  return Buffer.from(bytes);
+    const bytes = await response.Body?.transformToByteArray();
+    if (!bytes) {
+      throw new Error("Arquivo vazio no Backblaze B2.");
+    }
+
+    return Buffer.from(bytes);
+  });
 }
 
 export async function deleteFromB2(storageKey: string) {
@@ -209,24 +216,26 @@ export async function deleteFromB2(storageKey: string) {
   const objectKey = toObjectKey(storageKey);
   let bytesFreed = 0;
 
-  try {
-    const head = await client.send(
-      new HeadObjectCommand({
+  return withB2Error(async () => {
+    try {
+      const head = await client.send(
+        new HeadObjectCommand({
+          Bucket: config.bucket,
+          Key: objectKey,
+        }),
+      );
+      bytesFreed = head.ContentLength ?? 0;
+    } catch {
+      bytesFreed = 0;
+    }
+
+    await client.send(
+      new DeleteObjectCommand({
         Bucket: config.bucket,
         Key: objectKey,
       }),
     );
-    bytesFreed = head.ContentLength ?? 0;
-  } catch {
-    bytesFreed = 0;
-  }
 
-  await client.send(
-    new DeleteObjectCommand({
-      Bucket: config.bucket,
-      Key: objectKey,
-    }),
-  );
-
-  return bytesFreed;
+    return bytesFreed;
+  });
 }
