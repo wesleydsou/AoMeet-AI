@@ -6,7 +6,7 @@ import type { UploadKind } from "@/lib/services/storage";
 
 type ClientOption = { id: string; companyName: string };
 
-/** Limite da Vercel para body de serverless (~4.5 MB). Arquivos maiores vao direto ao B2. */
+/** Limite seguro para upload unico via Vercel (~4.5 MB). */
 const SERVER_UPLOAD_MAX_BYTES = 4 * 1024 * 1024;
 
 const uploadFields: Array<{ kind: UploadKind; field: string; label: string }> = [
@@ -70,13 +70,18 @@ async function uploadFileViaServer(file: File, kind: UploadKind): Promise<Upload
   };
 }
 
-async function uploadFileViaB2Direct(file: File, kind: UploadKind): Promise<UploadResult> {
+async function uploadFileViaMultipart(
+  file: File,
+  kind: UploadKind,
+  onProgress?: (message: string) => void,
+): Promise<UploadResult> {
   const contentType = file.type || "application/octet-stream";
 
-  const prep = await fetch("/api/meetings/upload-url", {
+  const initResponse = await fetch("/api/meetings/upload/multipart", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      phase: "init",
       kind,
       fileName: file.name,
       fileSize: file.size,
@@ -84,47 +89,87 @@ async function uploadFileViaB2Direct(file: File, kind: UploadKind): Promise<Uplo
     }),
   });
 
-  const payload = await readApiPayload<{
-    useDirect?: boolean;
-    uploadUrl?: string;
+  const initPayload = await readApiPayload<{
+    uploadId?: string;
+    objectKey?: string;
     storageKey?: string;
-    contentType?: string;
+    chunkSize?: number;
     error?: string;
-  }>(prep);
+  }>(initResponse);
 
-  if (!prep.ok) {
-    throw new Error(payload.error || `Falha ao preparar upload de ${kind}.`);
+  if (!initResponse.ok || !initPayload.uploadId || !initPayload.objectKey || !initPayload.chunkSize) {
+    throw new Error(initPayload.error || `Falha ao iniciar upload de ${kind}.`);
   }
 
-  if (payload.useDirect) {
-    return uploadFileViaServer(file, kind);
+  const chunkSize = initPayload.chunkSize;
+  const totalParts = Math.ceil(file.size / chunkSize);
+  const parts: Array<{ partNumber: number; etag: string }> = [];
+
+  for (let partNumber = 1; partNumber <= totalParts; partNumber += 1) {
+    const start = (partNumber - 1) * chunkSize;
+    const end = Math.min(start + chunkSize, file.size);
+    const chunk = file.slice(start, end);
+
+    onProgress?.(`Enviando parte ${partNumber}/${totalParts}...`);
+
+    const partBody = new FormData();
+    partBody.set("uploadId", initPayload.uploadId);
+    partBody.set("objectKey", initPayload.objectKey);
+    partBody.set("partNumber", String(partNumber));
+    partBody.set("chunk", chunk, `${file.name}.part${partNumber}`);
+
+    const partResponse = await fetch("/api/meetings/upload/multipart", {
+      method: "POST",
+      body: partBody,
+    });
+
+    const partPayload = await readApiPayload<{ partNumber?: number; etag?: string; error?: string }>(partResponse);
+
+    if (!partResponse.ok || !partPayload.partNumber || !partPayload.etag) {
+      throw new Error(partPayload.error || `Falha ao enviar parte ${partNumber} de ${kind}.`);
+    }
+
+    parts.push({ partNumber: partPayload.partNumber, etag: partPayload.etag });
   }
 
-  if (!payload.uploadUrl || !payload.storageKey) {
-    throw new Error(`Resposta invalida ao preparar upload de ${kind}.`);
-  }
+  onProgress?.("Finalizando upload...");
 
-  const put = await fetch(payload.uploadUrl, {
-    method: "PUT",
-    body: file,
-    headers: { "Content-Type": payload.contentType || contentType },
+  const completeResponse = await fetch("/api/meetings/upload/multipart", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      phase: "complete",
+      uploadId: initPayload.uploadId,
+      objectKey: initPayload.objectKey,
+      originalName: file.name,
+      fileSize: file.size,
+      parts,
+    }),
   });
 
-  if (!put.ok) {
-    throw new Error(
-      `Falha ao enviar ${kind} para o Backblaze B2 (${put.status}). ` +
-        "Configure CORS no bucket (veja .env.example) — o bucket pode continuar privado.",
-    );
+  const completePayload = await readApiPayload<{
+    storageKey?: string;
+    originalName?: string;
+    size?: number;
+    error?: string;
+  }>(completeResponse);
+
+  if (!completeResponse.ok || !completePayload.storageKey || !completePayload.originalName || !completePayload.size) {
+    throw new Error(completePayload.error || `Falha ao finalizar upload de ${kind}.`);
   }
 
   return {
-    storageKey: payload.storageKey,
-    originalName: file.name,
-    size: file.size,
+    storageKey: completePayload.storageKey,
+    originalName: completePayload.originalName,
+    size: completePayload.size,
   };
 }
 
-async function uploadMeetingFile(file: File, kind: UploadKind): Promise<UploadResult> {
+async function uploadMeetingFile(
+  file: File,
+  kind: UploadKind,
+  onProgress?: (message: string) => void,
+): Promise<UploadResult> {
   if (file.size <= SERVER_UPLOAD_MAX_BYTES) {
     try {
       return await uploadFileViaServer(file, kind);
@@ -135,7 +180,7 @@ async function uploadMeetingFile(file: File, kind: UploadKind): Promise<UploadRe
     }
   }
 
-  return uploadFileViaB2Direct(file, kind);
+  return uploadFileViaMultipart(file, kind, onProgress);
 }
 
 export function MeetingCreateForm({
@@ -173,7 +218,9 @@ export function MeetingCreateForm({
           const sizeMb = Math.max(1, Math.round(file.size / (1024 * 1024)));
           setUploadStatus(`Enviando ${label} (${sizeMb} MB)...`);
 
-          const uploaded = await uploadMeetingFile(file, kind);
+          const uploaded = await uploadMeetingFile(file, kind, (message) => {
+            setUploadStatus(`Enviando ${label} (${sizeMb} MB) — ${message}`);
+          });
 
           formData.delete(field);
           formData.set(`${kind}StorageKey`, uploaded.storageKey);
@@ -263,12 +310,12 @@ export function MeetingCreateForm({
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <label className="upload-zone">
               Upload de audio
-              <p className="upload-zone-hint">MP3, WAV, M4A — ate 25 MB (envio direto ao B2)</p>
+              <p className="upload-zone-hint">MP3, WAV, M4A — ate 25 MB</p>
               <input className="mt-3 block w-full" name="audioFile" type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.webm" disabled={isPending} />
             </label>
             <label className="upload-zone">
               Upload de video
-              <p className="upload-zone-hint">MP4, WebM — ate 100 MB (envio direto ao B2)</p>
+              <p className="upload-zone-hint">MP4, WebM — ate 100 MB</p>
               <input className="mt-3 block w-full" name="videoFile" type="file" accept="video/*,.mp4,.mov,.m4v,.webm" disabled={isPending} />
             </label>
           </div>

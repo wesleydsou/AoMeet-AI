@@ -1,5 +1,14 @@
-import { PutObjectCommand, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import {
+  PutObjectCommand,
+  DeleteObjectCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
+  S3Client,
+  CreateMultipartUploadCommand,
+  UploadPartCommand,
+  CompleteMultipartUploadCommand,
+  AbortMultipartUploadCommand,
+} from "@aws-sdk/client-s3";
 
 const B2_PREFIX = "b2:";
 
@@ -66,25 +75,106 @@ export async function uploadToB2(objectKey: string, buffer: Buffer, contentType?
   return toB2StorageKey(objectKey);
 }
 
-export async function createPresignedUploadUrl(objectKey: string, contentType: string) {
+export async function startMultipartUpload(objectKey: string, contentType?: string) {
   const config = getB2Config();
   if (!config) {
     throw new Error("Backblaze B2 nao configurado.");
   }
 
   const client = createB2Client(config);
-  const command = new PutObjectCommand({
-    Bucket: config.bucket,
-    Key: objectKey,
-    ContentType: contentType || "application/octet-stream",
-  });
+  const response = await client.send(
+    new CreateMultipartUploadCommand({
+      Bucket: config.bucket,
+      Key: objectKey,
+      ContentType: contentType || "application/octet-stream",
+    }),
+  );
 
-  const uploadUrl = await getSignedUrl(client, command, { expiresIn: 600 });
+  if (!response.UploadId) {
+    throw new Error("Falha ao iniciar upload multipart no B2.");
+  }
 
   return {
-    uploadUrl,
+    uploadId: response.UploadId,
+    objectKey,
     storageKey: toB2StorageKey(objectKey),
   };
+}
+
+export async function uploadMultipartPart(input: {
+  objectKey: string;
+  uploadId: string;
+  partNumber: number;
+  body: Buffer;
+}) {
+  const config = getB2Config();
+  if (!config) {
+    throw new Error("Backblaze B2 nao configurado.");
+  }
+
+  const client = createB2Client(config);
+  const response = await client.send(
+    new UploadPartCommand({
+      Bucket: config.bucket,
+      Key: input.objectKey,
+      UploadId: input.uploadId,
+      PartNumber: input.partNumber,
+      Body: input.body,
+    }),
+  );
+
+  if (!response.ETag) {
+    throw new Error(`Falha ao enviar parte ${input.partNumber}.`);
+  }
+
+  return { partNumber: input.partNumber, etag: response.ETag };
+}
+
+export async function completeMultipartUpload(input: {
+  objectKey: string;
+  uploadId: string;
+  parts: Array<{ partNumber: number; etag: string }>;
+}) {
+  const config = getB2Config();
+  if (!config) {
+    throw new Error("Backblaze B2 nao configurado.");
+  }
+
+  const client = createB2Client(config);
+  await client.send(
+    new CompleteMultipartUploadCommand({
+      Bucket: config.bucket,
+      Key: input.objectKey,
+      UploadId: input.uploadId,
+      MultipartUpload: {
+        Parts: input.parts
+          .slice()
+          .sort((a, b) => a.partNumber - b.partNumber)
+          .map((part) => ({
+            PartNumber: part.partNumber,
+            ETag: part.etag,
+          })),
+      },
+    }),
+  );
+
+  return toB2StorageKey(input.objectKey);
+}
+
+export async function abortMultipartUpload(objectKey: string, uploadId: string) {
+  const config = getB2Config();
+  if (!config) {
+    return;
+  }
+
+  const client = createB2Client(config);
+  await client.send(
+    new AbortMultipartUploadCommand({
+      Bucket: config.bucket,
+      Key: objectKey,
+      UploadId: uploadId,
+    }),
+  );
 }
 
 export async function downloadFromB2(storageKey: string) {
