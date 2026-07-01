@@ -9,7 +9,7 @@ AoMeet AI e o MVP da Aosafe Cloud Solutions para registrar reunioes, consolidar 
 - Prisma Accelerate para conexao em producao na Vercel
 - Autenticacao com cookie `httpOnly` e JWT assinado
 - Upload privado em **Bunny.net Storage** (producao) ou `storage/uploads` (local)
-- Providers de IA (Groq/OpenAI) e transcricao (AssemblyAI/Whisper) com fallback mock
+- Providers de IA (Groq/OpenAI) e transcricao (Groq Whisper, AssemblyAI ou OpenAI Whisper) com fallback mock apenas em desenvolvimento local
 - Deploy preparado para Vercel
 
 ## Como rodar localmente
@@ -29,9 +29,9 @@ AoMeet AI e o MVP da Aosafe Cloud Solutions para registrar reunioes, consolidar 
 - `DATABASE_URL`: connection string do Prisma Accelerate (runtime na Vercel)
 - `DIRECT_URL`: conexao direta ao Postgres para migracoes Prisma
 - `AUTH_SECRET`: segredo usado para assinar a sessao (min. 32 caracteres)
+- `GROQ_API_KEY`: LLM para resumos/tarefas/chat e transcricao via Whisper (Groq)
+- `ASSEMBLYAI_API_KEY`: transcricao de audio/video (prioridade sobre Groq Whisper; ideal para arquivos grandes)
 - `OPENAI_API_KEY`: Whisper (transcricao) e/ou GPT (IA)
-- `ASSEMBLYAI_API_KEY`: transcricao de audio/video (prioridade sobre Whisper)
-- `GROQ_API_KEY`: LLM para resumos, tarefas e chat (prioridade sobre OpenAI)
 - `BUNNY_STORAGE_ZONE`: nome da storage zone (ex: aomeetai)
 - `BUNNY_STORAGE_HOSTNAME`: hostname regional (ex: ny.storage.bunnycdn.com)
 - `BUNNY_STORAGE_PASSWORD`: password da storage zone (FTP & API Access)
