@@ -1,6 +1,7 @@
 import { AIRequestType, MeetingStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAIProvider, getTranscriptionProvider } from "@/lib/providers/index";
+import type { TranscriptionResult } from "@/lib/providers/transcription";
 import { incrementUsage, decrementUsage } from "@/lib/usage";
 import { purgeMeetingMediaFiles } from "@/lib/services/storage";
 import { normalizeAiTextField } from "@/lib/utils";
@@ -18,6 +19,23 @@ async function buildTranscriptFromSegments(meetingId: string) {
   return segments.map((segment) => `[${segment.speakerName}] ${segment.text}`).join("\n");
 }
 
+async function saveTranscriptSegments(meetingId: string, result: TranscriptionResult) {
+  if (!result.segments.length) {
+    return;
+  }
+
+  await prisma.meetingTranscriptSegment.deleteMany({ where: { meetingId } });
+  await prisma.meetingTranscriptSegment.createMany({
+    data: result.segments.map((segment) => ({
+      meetingId,
+      speakerName: segment.speakerName,
+      startTimeSeconds: segment.startTimeSeconds,
+      endTimeSeconds: segment.endTimeSeconds,
+      text: segment.text,
+    })),
+  });
+}
+
 async function logStep(meetingId: string, step: string, status: string, message: string, metadata?: Record<string, unknown>) {
   await prisma.processingLog.create({
     data: {
@@ -28,6 +46,10 @@ async function logStep(meetingId: string, step: string, status: string, message:
       metadataJson: metadata ? JSON.stringify(metadata) : null,
     },
   });
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function processMeeting(meetingId: string) {
@@ -52,20 +74,27 @@ export async function processMeeting(meetingId: string) {
     });
 
     let transcript = meeting.transcriptText?.trim() || (await buildTranscriptFromSegments(meetingId));
+    let transcriptionResult: TranscriptionResult | null = null;
 
     if (!transcript && meeting.audioStorageKey) {
-      transcript = await transcriptionProvider.transcribeAudio(meeting.audioStorageKey, meeting.language);
+      transcriptionResult = await transcriptionProvider.transcribeAudio(meeting.audioStorageKey, meeting.language);
+      transcript = transcriptionResult.text;
     }
 
     if (!transcript && meeting.videoStorageKey) {
-      transcript = await transcriptionProvider.transcribeVideo(meeting.videoStorageKey, meeting.language);
+      transcriptionResult = await transcriptionProvider.transcribeVideo(meeting.videoStorageKey, meeting.language);
+      transcript = transcriptionResult.text;
     }
 
     if (!transcript?.trim()) {
       throw new Error("Nenhuma transcricao disponivel para processamento.");
     }
 
-    transcript = await transcriptionProvider.cleanupTranscript(transcript);
+    if (transcriptionResult?.segments.length) {
+      await saveTranscriptSegments(meetingId, transcriptionResult);
+    } else {
+      transcript = await transcriptionProvider.cleanupTranscript(transcript);
+    }
 
     const bytesFreed = await purgeMeetingMediaFiles({
       audioStorageKey: meeting.audioStorageKey,
@@ -91,6 +120,7 @@ export async function processMeeting(meetingId: string) {
 
     await logStep(meetingId, "storage_purge", "done", "Arquivos de midia removidos apos transcricao.", {
       bytesFreed,
+      speakerSegments: transcriptionResult?.segments.length || 0,
     });
 
     await logStep(meetingId, "cleanup", "done", "Transcricao consolidada.", { transcriptLength: transcript.length });
@@ -103,24 +133,22 @@ export async function processMeeting(meetingId: string) {
       },
     });
 
-    const [summaryData, tasks, decisions] = await Promise.all([
-      aiProvider.generateMeetingSummary(transcript),
-      aiProvider.extractTasks(transcript),
-      aiProvider.extractDecisions(transcript),
-    ]);
-
-    const followUp = await aiProvider.generateFollowUpEmail(summaryData.summary);
+    const analysis = await aiProvider.analyzeMeetingTranscript(transcript);
+    const tasks = Array.isArray(analysis.tasks) ? analysis.tasks : [];
+    const decisions = Array.isArray(analysis.decisions) ? analysis.decisions : [];
+    await sleep(1_000);
+    const followUp = await aiProvider.generateFollowUpEmail(analysis.summary);
 
     await prisma.meetingTask.deleteMany({ where: { meetingId } });
 
     await prisma.meeting.update({
       where: { id: meetingId },
       data: {
-        summaryText: summaryData.summary,
+        summaryText: analysis.summary,
         decisionsText: decisions.join("\n"),
         tasksText: tasks.map((item) => item.title).join("\n"),
-        risksText: normalizeAiTextField(summaryData.risks),
-        nextStepsText: normalizeAiTextField(summaryData.nextSteps),
+        risksText: normalizeAiTextField(analysis.risks),
+        nextStepsText: normalizeAiTextField(analysis.nextSteps),
         followUpText: followUp,
         aiChatContext: transcript,
         status: MeetingStatus.completed,
@@ -143,7 +171,7 @@ export async function processMeeting(meetingId: string) {
           meetingId,
           type: AIRequestType.summary,
           prompt: "Gerar resumo executivo",
-          response: summaryData.summary,
+          response: analysis.summary,
           creditsUsed: 1,
         },
         {

@@ -15,7 +15,7 @@ import {
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getStoredFileLabel } from "@/lib/services/storage";
-import { buildMinutesMarkdown, formatDateTime, formatDuration, parseStoredListField } from "@/lib/utils";
+import { buildMinutesMarkdown, formatDateTime, formatDuration, formatMediaTimestamp, parseStoredListField } from "@/lib/utils";
 
 const tabs = [
   { id: "overview", label: "Visao geral" },
@@ -45,7 +45,7 @@ export default async function MeetingDetailPage({
     include: {
       client: true,
       participants: true,
-      transcriptSegments: true,
+      transcriptSegments: { orderBy: { startTimeSeconds: "asc" } },
       tasks: { orderBy: { createdAt: "asc" } },
       processingLogs: { orderBy: { createdAt: "asc" } },
       aiRequests: { where: { type: "chat" }, orderBy: { createdAt: "desc" } },
@@ -180,19 +180,32 @@ export default async function MeetingDetailPage({
         {activeTab === "transcript" ? (
           <section className="glass-card p-6">
             <p className="panel-title">Transcricao</p>
-            <p className="prose-output mt-4 text-sm text-muted-foreground">{meeting.transcriptText || "Sem transcricao disponivel."}</p>
             {meeting.transcriptSegments.length ? (
-              <div className="mt-6 space-y-3">
-                {meeting.transcriptSegments.map((segment) => (
-                  <div key={segment.id} className="rounded-lg border border-border bg-muted/40 p-4">
-                    <p className="text-sm font-bold">
-                      {segment.speakerName} • {segment.startTimeSeconds}s - {segment.endTimeSeconds}s
-                    </p>
-                    <p className="mt-2 text-sm text-muted-foreground">{segment.text}</p>
-                  </div>
-                ))}
-              </div>
-            ) : null}
+              <>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Falas identificadas por locutor (diarizacao automatica). Os nomes reais podem ser ajustados manualmente nos participantes.
+                </p>
+                <div className="mt-6 space-y-4">
+                  {meeting.transcriptSegments.map((segment) => (
+                    <div key={segment.id} className="rounded-lg border border-border bg-muted/40 p-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold text-primary">
+                          {segment.speakerName}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatMediaTimestamp(segment.startTimeSeconds)} — {formatMediaTimestamp(segment.endTimeSeconds)}
+                        </span>
+                      </div>
+                      <p className="prose-output mt-3 text-sm leading-relaxed text-foreground">{segment.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="prose-output mt-4 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                {meeting.transcriptText || "Sem transcricao disponivel."}
+              </p>
+            )}
           </section>
         ) : null}
 

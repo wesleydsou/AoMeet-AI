@@ -25,6 +25,20 @@ export function formatDuration(seconds: number) {
   return `${minutes}min`;
 }
 
+export function formatMediaTimestamp(seconds: number) {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${String(secs).padStart(2, "0")}`;
+}
+
+export function formatTranscriptFromSegments(
+  segments: Array<{ speakerName: string; startTimeSeconds: number; text: string }>,
+) {
+  return segments
+    .map((segment) => `[${segment.speakerName} — ${formatMediaTimestamp(segment.startTimeSeconds)}]\n${segment.text}`)
+    .join("\n\n");
+}
+
 export function relativeTime(date: Date | string) {
   return formatDistanceToNow(new Date(date), { addSuffix: true });
 }

@@ -1,4 +1,4 @@
-import type { TranscriptionProvider } from "@/lib/providers/transcription";
+import type { TranscriptionProvider, TranscriptionResult } from "@/lib/providers/transcription";
 import { readStoredFile } from "@/lib/services/storage";
 
 const GROQ_BASE = "https://api.groq.com/openai/v1";
@@ -8,7 +8,7 @@ function getFileName(storageKey: string) {
   return objectPath.split("/").pop() || "audio.m4a";
 }
 
-async function transcribeWithGroqWhisper(storageKey: string, language: string) {
+async function transcribeWithGroqWhisper(storageKey: string, language: string): Promise<TranscriptionResult> {
   const buffer = await readStoredFile(storageKey);
   const fileName = getFileName(storageKey);
 
@@ -38,7 +38,7 @@ async function transcribeWithGroqWhisper(storageKey: string, language: string) {
     throw new Error("Groq Whisper retornou transcricao vazia.");
   }
 
-  return text;
+  return { text, segments: [] };
 }
 
 export const groqTranscriptionProvider: TranscriptionProvider = {

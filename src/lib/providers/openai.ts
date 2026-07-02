@@ -1,5 +1,5 @@
-import type { AIProvider } from "@/lib/providers/ai";
-import type { TranscriptionProvider } from "@/lib/providers/transcription";
+import type { AIProvider, MeetingAnalysis } from "@/lib/providers/ai";
+import type { TranscriptionProvider, TranscriptionResult } from "@/lib/providers/transcription";
 
 const OPENAI_BASE = "https://api.openai.com/v1";
 
@@ -35,23 +35,26 @@ async function openaiJson<T>(system: string, user: string): Promise<T> {
 }
 
 export const openaiAIProvider: AIProvider = {
-  async generateMeetingSummary(transcript) {
-    return openaiJson<{ summary: string; risks: string; nextSteps: string; highlights: string[] }>(
-      "Voce gera atas de reuniao em portugues do Brasil.",
-      `Gere um JSON com summary (string), risks (string ou array de strings), nextSteps (string ou array de strings) e highlights (array de strings) a partir da transcricao:\n\n${transcript.slice(0, 120_000)}`,
+  async analyzeMeetingTranscript(transcript) {
+    return openaiJson<MeetingAnalysis>(
+      "Voce gera atas de reuniao em portugues do Brasil. Extraia resumo, riscos, proximos passos, destaques, tarefas e decisoes.",
+      `Analise a transcricao e retorne um unico JSON com summary, risks, nextSteps, highlights, tasks e decisions.\n\n${transcript.slice(0, 120_000)}`,
     );
+  },
+  async generateMeetingSummary(transcript) {
+    const analysis = await openaiAIProvider.analyzeMeetingTranscript(transcript);
+    return {
+      summary: analysis.summary,
+      risks: typeof analysis.risks === "string" ? analysis.risks : analysis.risks.join("\n"),
+      nextSteps: typeof analysis.nextSteps === "string" ? analysis.nextSteps : analysis.nextSteps.join("\n"),
+      highlights: analysis.highlights,
+    };
   },
   async extractTasks(transcript) {
-    return openaiJson<Array<{ title: string; description: string; responsibleName: string; dueDate: string }>>(
-      "Extraia tarefas acionaveis de reunioes.",
-      `Retorne um array JSON de tarefas com title, description, responsibleName e dueDate (ISO) a partir de:\n\n${transcript.slice(0, 120_000)}`,
-    );
+    return (await openaiAIProvider.analyzeMeetingTranscript(transcript)).tasks;
   },
   async extractDecisions(transcript) {
-    return openaiJson<string[]>(
-      "Extraia decisoes tomadas em reunioes.",
-      `Retorne um array JSON de strings com as decisoes de:\n\n${transcript.slice(0, 120_000)}`,
-    );
+    return (await openaiAIProvider.analyzeMeetingTranscript(transcript)).decisions;
   },
   async answerQuestion(transcript, question) {
     return openaiChat(
@@ -79,12 +82,12 @@ export const openaiTranscriptionProvider: TranscriptionProvider = {
   },
 };
 
-async function transcribeWithWhisper(filePath: string, language: string) {
+async function transcribeWithWhisper(filePath: string, language: string): Promise<TranscriptionResult> {
   const { readStoredFile } = await import("@/lib/services/storage");
   const buffer = await readStoredFile(filePath);
 
   const form = new FormData();
-  form.append("file", new Blob([buffer]), "audio.webm");
+  form.append("file", new Blob([new Uint8Array(buffer)]), "audio.webm");
   form.append("model", "whisper-1");
   form.append("language", language.split("-")[0] || "pt");
 
@@ -101,5 +104,5 @@ async function transcribeWithWhisper(filePath: string, language: string) {
   }
 
   const data = (await response.json()) as { text?: string };
-  return data.text?.trim() || "";
+  return { text: data.text?.trim() || "", segments: [] };
 }
